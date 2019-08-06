@@ -9,5 +9,5 @@ local copies of the data.
 The use also needs to create the following directories relative to
 this directory:
 
- - RData
- - plots
+ - ../RData
+ - ../plots
