@@ -1,0 +1,48 @@
+variable,new_name,p1s1,p1s2,p2
+menthol,menthol,menthol,menthol,Menthol_Status
+age,age,Demo_2_1_TEXT_SCR,demo_2_1_text_scr,AGE_CLEAN
+gender,gender,Demo_3_SCR,demo_3_scr,GENDER_CLEAN
+race,race,race_3cat,race_3cat,race_3c
+FTND w cpd,ftnd_w_cpd,FTND_score_SCR,ftnd_score_scr,ftndwcpd_visit92
+FTND wo cpd,ftnd_wo_cpd,FTND_score_minuscigs_SCR,ftnd_score_minuscigs_scr,ftndwocpd_visit92
+educational attainment,edu,Demo_9_SCR,demo_9_scr,demo_9_3c
+CESD,cesd_bsl,CESD_score_BSL1,cesd_score_scr,CESD_total_visit92
+SMAST,smast_bsl,,,SMAST_total_visit92
+DAST,dast_bsl,,,DAST_total_visit92
+co,co_bsl,co_BSL2,pm_co_avg_rand,co_visit0
+WISDM - affective enhancement,wisdm_ae_bsl,WISDM_ae_BSL1,wisdm_ae_scr,WISDM_Affective_visit91
+WISDM - affiliative attachment,wisdm_affat_bsl,WISDM_affat_BSL1,wisdm_affat_scr,WISDM_Affiliative_visit91
+WISDM - automaticity,wisdm_aut_bsl,WISDM_aut_BSL1,wisdm_aut_scr,WISDM_Automaticity_visit91
+WISDM - cognitive enhancement,wisdm_ce_bsl,WISDM_ce_BSL1,wisdm_ce_scr,WISDM_Cognitive_visit91
+WISDM - cue exposure/associative processes,wisdm_ceap_bsl,WISDM_ceap_BSL1,wisdm_ceap_scr,WISDM_Cue_visit91
+WISDM - craving,wisdm_crav_bsl,WISDM_crav_BSL1,wisdm_crav_scr,WISDM_Craving_visit91
+WISDM - loss of control,wisdm_loc_bsl,WISDM_loc_BSL1,wisdm_loc_scr,WISDM_Loss_of_Control_visit91
+WISDM - social/environmental goads,wisdm_seg_bsl,WISDM_seg_BSL1,wisdm_seg_scr,WISDM_Social_visit91
+WISDM - taste,wisdm_taste_bsl,WISDM_taste_BSL1,wisdm_taste_scr,WISDM_Taste_visit91
+WISDM - tolerance,wisdm_tol_bsl,WISDM_tol_BSL1,wisdm_tol_scr,WISDM_Tolerance_visit91
+WISDM - weight control,wisdm_wc_bsl,WISDM_wc_BSL1,wisdm_wc_scr,WISDM_Weight_visit91
+WISDM primary,wisdm_pdm_bsl,WISDM_pdm_BSL1,wisdm_pdm_scr,WISDM_p_visit91
+WISDM secondary,wisdm_sdm_bsl,WISDM_sdm_BSL1,wisdm_sdm_scr,WISDM_s_visit91
+WISDM total,wisdm_ts_bsl,WISDM_ts_BSL1,wisdm_ts_scr,WISDM_t_visit91
+QSU factor 1,qsu_f1_bsl,QSU_U_f1_BSL2,qsu_u_f1_rand,qsu_u_factor1_visit0
+QSU factor 2,qsu_f2_bsl,QSU_U_f2_BSL2,qsu_u_f2_rand,qsu_u_factor2_visit0
+QSU total,qsu_tot_bsl,QSU_U_tot_BSL2,qsu_u_tot_rand,qsu_u_total_visit0
+MNWS,mnws_bsl,MNWS2_score_BSL2,mnws2_score_rand,mnws_total_visit0
+PANAS positive,panas_pos_bsl,PANAS1_pos_BSL1,panas1_pas_scr,PANAS_positive_visit91
+PANAS negative,panas_neg_bsl,PANAS1_neg_BSL1,panas1_nas_scr,PANAS_negative_visit91
+pss,pss_bsl,PSS_score_BSL1,pss_score_scr,pss_total_visit0
+CES - satisfaction,ces_satisfcation_bsl,CES1_satisfaction_BSL2,ces1_satis_rand,ces1_satisfaction_visit0
+CES - psychological reward,ces_reward_bsl,CES1_reward_BSL2,ces1_psych_rand,ces1_psych_reward_visit0
+CES - aversion,ces_aversion_bsl,CES1_aversion_BSL2,ces1_aversion_rand,ces1_aversion_visit0
+CES - enjoyment sensation,ces_enjoyment_bsl,CES1_enjoyment_BSL2,ces1_enjoysens_rand,ces1_3_clean_visit0
+CES - recue craving,ces_cravingreduction_bsl,CES1_cravingreduction_BSL2,ces1_craving_rand,ces1_11_clean_visit0
+baseline TNE,tne_nmolperml_bsl,tne_nmolperml_BSL2,tne_nmolperml_rand,TNE_uncorrected_visit0
+baseline CPD,cpd_bsl,baseline_cpd,baseline_cpd_ivr,totalcpd_visit0
+total cpd week 6/8,total_cpd,total_cpd_week6,total_cpd_ivr_week6,totalcpd_visit8
+study cpd week 6/8,study_cpd,study_cpd_week6,study_cpd_ivr_week6,studycpd_visit8
+non-study cpd week 6/8,non_study_cpd,non_study_cpd_week6,non_study_cpd_ivr_week6,
+CESD week 6/8,cesd,CESD_score_week6,cesd_score_week6,cesd_total_visit8
+total cpd week 20,total_cpd_20,,,totalcpd_visit20
+study cpd week 20,study_cpd_20,,,studycpd_visit20
+CESD week 20,cesd_20,,,cesd_total_visit20
+TNE week 20,tne_20,,,TNE_uncorrected_visit20
