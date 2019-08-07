@@ -46,6 +46,10 @@ p1s2 <- as_tibble(p1s2)
 p2   <- as_tibble(p2)
 
 # create treatment, control, and study indicators ----
+p1s1$study <- "P1S1"
+p1s2$study <- "P1S2"
+p2$study   <- "P2"
+
 # ~ p1s1 ----
 p1s1 <- p1s1 %>%
   mutate(teh_treatment = treatment_forTEH,
