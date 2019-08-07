@@ -1,4 +1,5 @@
 library(tidyverse)
+library(xtable)
 source("R/functions.R")
 
 set.seed(123)
@@ -14,7 +15,7 @@ train <- analysis %>% filter(study == "P2")
 trt   <- as.logical(train$trt) # only for P2!
 
 
-# matrix if predictors, outcomes.
+# matrix of predictors, outcomes.
 # drop variables that will not be used as predictors or as outcomes
 vars_to_drop <- c("id", "study_cpd", "study", "trt", "teh_control")
 Ytrain <- train %>% select(outcomes)
@@ -55,7 +56,7 @@ where_tib <- as_tibble(where_tib)
 where_names      <- paste0("where_", names(where_tib))
 names(where_tib) <- where_names
 
-# reality check. use the where matrix to compute fitted values.
+# reality check. use the 'where' matrix to compute fitted values.
 # when done, these should match fitted_trt_diffs. make sure this
 # passes before computing fitted values within each tree. 
 check <- list()
@@ -86,6 +87,24 @@ for(outcome in outcomes) {
  means <- aggregate(trt_diffs_w_where, 
    by  = list(trt_diffs_w_where[, where_col, drop = TRUE]), 
    FUN = mean)
- fitted_means[[outcome]] <- means[, c(where_col, outcomes)]
+ means <- means[, c(where_col, outcomes)]
+ names(means)[1] <- "node"
+ fitted_means[[outcome]] <- means 
 }
 
+# create table
+n_lines <- sapply(fitted_means, nrow)
+
+tab    <- do.call(rbind, fitted_means)
+rnames <- rownames(tab)
+dtab   <- dim(tab)
+tab    <- as.numeric(sprintf("%.2f", as.matrix(tab)))
+tab    <- array(tab, dim = dtab)
+
+colnames(tab) <- c("node", outcomes)
+rownames(tab) <- rnames
+
+write.table(tab,
+  file      = "tables/tree-table.txt",
+  sep       = " & ",
+  quote     = FALSE)
