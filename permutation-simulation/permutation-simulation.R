@@ -12,20 +12,16 @@ sim <- function(seed, coefs, n_perm = 1000) {
   dm <- model.matrix(fm)
   y <- rnorm(n, mean = c(dm %*% coefs))
 
-  chuyu_pe <- chuyu_est(y, a, x1, x2, FALSE)
+  pe <- chuyu_est(y, a, x1, x2, FALSE)
+  
   chuyu_pd <- replicate(n_perm, chuyu_est(y, a, x1, x2, TRUE))
-
-    
-  jeff_pe <- jeff_est(y, a, x1, x2, FALSE)
-  jeff_pd <- replicate(n_perm, jeff_est(y, a, x1, x2, TRUE))
-
-  david_pe <- david_est(y, a, x1, x2, FALSE)
+  jeff_pd  <- replicate(n_perm, jeff_est(y, a, x1, x2, TRUE))
   david_pd <- replicate(n_perm, david_est(y, a, x1, x2, TRUE))
 
   out <- list()
-  out$chuyu_pval  <- mean(chuyu_pe > chuyu_pd)
-  out$jeff_pval   <- mean(jeff_pe > jeff_pd)
-  out$david_pval  <- mean(david_pe > david_pd)
+  out$chuyu_pval  <- mean(chuyu_pd > pe)
+  out$jeff_pval   <- mean(jeff_pd  > pe)
+  out$david_pval  <- mean(david_pd > pe)
   unlist(out)
 }
 
@@ -86,6 +82,8 @@ david_est <- function(y, a, x1, x2, permute = FALSE) {
 
 # type I error ----
 coefs <- c(1, 1, 1, 1, 0, 0)
+# debugonce(sim)
+# sim(1, coefs, 10)
 
 out <- mclapply(seq_len(1000),
   FUN      = sim,
@@ -96,7 +94,7 @@ out <- do.call(rbind, out)
 apply(out, 2, function(x) mean(x < 0.05))
 
 # power ----
-coefs <- c(1, 1, 1, 1, 1, 1)
+coefs <- c(1, 1, 1, 1, 1 / 4, 1 / 4)
 
 out <- mclapply(seq_len(1000),
   FUN      = sim,
