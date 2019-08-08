@@ -78,11 +78,14 @@ p2   <- rename(p2, id = studyid)
 p1s2 <- p1s2 %>% mutate(menthol = 1 * (menthol == "Menthol"))
 p2   <- p2   %>% mutate(menthol = 1 * (menthol == "Menthol"))
 
-# ~ making race the same
+# ~ make gender the same ----
+warning("This assumes that P2 0-1 coding is equivalent to 1-2 coding of P1")
+p1s1$gender <- p1s1$gender - 1
+p1s2$gender <- p1s2$gender - 1
+
+# ~ making race the same ----
 warning("This assumes that P2 1-2-3 is equivalent to 0-1-2 coding of P1S1 and P1S2")
 p2$race <- p2$race - 1
-
-warning("Education is treated as numeric variable")
 
 warning("This code will drop columns from each data set if the column names don't
   appear in the other data sets")
@@ -113,6 +116,10 @@ analysis$edu <- factor(analysis$edu,
 # ~ label race ----
 table(analysis$race)
 analysis$race <- factor(analysis$race, labels = c("white", "black", "other"))
+
+# ~ label gender ---- 
+table(analysis$gender)
+analysis$gender <- factor(analysis$gender, labels = c("male", "female"))
 
 analysis <- na.omit(analysis)
 
