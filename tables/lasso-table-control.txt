@@ -1,6 +1,0 @@
-total_cpd & cesd
-(Intercept) & 4.59 & 6.97
-cpd_bsl & 0.84 & -
-ftnd_w_cpd & 0.21 & -
-cesd_bsl & - & 0.38
-panas_neg_bsl & - & 0.09

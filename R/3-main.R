@@ -2,6 +2,11 @@ library(tidyverse)
 library(xtable)
 source("R/functions.R")
 
+# --- global variables dictating output and cohort --- #
+table_dir <- "all"
+# ---------------------------------------------------- #
+
+
 set.seed(123)
 
 load("../RData/analysis.RData")
@@ -97,39 +102,30 @@ for(outcome in outcomes) {
 # ~ lasso coefficients ----
 con_coefs <- lapply(trt_diffs_list, '[[', 'm0')
 con_coefs <- lapply(con_coefs, coef)
-con_coefs <- do.call(cbind, con_coefs)
 
 trt_coefs <- lapply(trt_diffs_list, '[[', 'm1')
 trt_coefs <- lapply(trt_coefs, coef)
-trt_coefs <- do.call(cbind, trt_coefs)
 
-con_coefs <- as.matrix(con_coefs)
-trt_coefs <- as.matrix(trt_coefs)
+coefs <- mapply(cbind, con_coefs, trt_coefs)
+coefs <- do.call(rbind, coefs)
+coefs <- as.matrix(coefs)
 
-# keep rows with non-zero coefs:
-con_coefs <- con_coefs[rowSums(con_coefs) > 0, ]
-trt_coefs <- trt_coefs[rowSums(trt_coefs) > 0, ]
+rownames(coefs) <- paste0(rep(outcomes, sapply(con_coefs, nrow)), " & ",
+  rownames(coefs))
+
+# keep rows with at least 1 non-zero coefficient:
+coefs <- coefs[rowSums(coefs) > 0, ]
 
 # format for printing
-colnames(con_coefs) <- outcomes
-colnames(trt_coefs) <- outcomes
+colnames(coefs) <- c("Control", "Treatment")
 
-con_coefs <- as.data.frame(con_coefs)
-trt_coefs <- as.data.frame(trt_coefs)
+coefs  <- as.data.frame(coefs)
 
-con_coefs[] <- lapply(con_coefs, function(x) sprintf("%.2f", x))
-trt_coefs[] <- lapply(trt_coefs, function(x) sprintf("%.2f", x))
+coefs[] <- lapply(coefs, function(x) sprintf("%.2f", x))
+coefs[] <- lapply(coefs, function(x) gsub("0.00", "-", x))
 
-con_coefs[] <- lapply(con_coefs, function(x) gsub("0.00", "-", x))
-trt_coefs[] <- lapply(trt_coefs, function(x) gsub("0.00", "-", x))
-
-write.table(con_coefs,
-  file      = "tables/lasso-table-control.txt",
-  sep       = " & ",
-  quote     = FALSE)
-
-write.table(trt_coefs,
-  file      = "tables/lasso-table-treatment.txt",
+write.table(coefs,
+  file      = sprintf("tables/%s/lasso-coefs.txt", table_dir),
   sep       = " & ",
   quote     = FALSE)
 
