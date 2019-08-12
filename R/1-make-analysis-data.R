@@ -85,12 +85,11 @@ p2   <- rename(p2, id = studyid)
 # p1s2 <- p1s2 %>% mutate(menthol = 1 * (menthol == "Menthol"))
 p2   <- p2   %>% mutate(menthol = 1 * (menthol == "Menthol"))
 
-<<<<<<< HEAD
+
 # ~ making race the same
 message("This assumes that P2 1-2-3 is equivalent to 0-1-2 coding of P1S1 and P1S2")
 p2$race <- p2$race - 1
 
-=======
 # ~ make gender the same ----
 warning("This assumes that P2 0-1 coding is equivalent to 1-2 coding of P1")
 p1s1$gender <- p1s1$gender - 1
@@ -102,7 +101,7 @@ p2$race <- p2$race - 1
 
 warning("This code will drop columns from each data set if the column names don't
   appear in the other data sets")
->>>>>>> 3fe1425899e6e46308c2107aa92414b4d97087b4
+
 
 message("Only keep variables in both data sets")
 
