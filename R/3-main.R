@@ -92,7 +92,49 @@ for(outcome in outcomes) {
  fitted_means[[outcome]] <- means 
 }
 
-# create table
+# tables ----
+
+# ~ lasso coefficients ----
+con_coefs <- lapply(trt_diffs_list, '[[', 'm0')
+con_coefs <- lapply(con_coefs, coef)
+con_coefs <- do.call(cbind, con_coefs)
+
+trt_coefs <- lapply(trt_diffs_list, '[[', 'm1')
+trt_coefs <- lapply(trt_coefs, coef)
+trt_coefs <- do.call(cbind, trt_coefs)
+
+con_coefs <- as.matrix(con_coefs)
+trt_coefs <- as.matrix(trt_coefs)
+
+# keep rows with non-zero coefs:
+con_coefs <- con_coefs[rowSums(con_coefs) > 0, ]
+trt_coefs <- trt_coefs[rowSums(trt_coefs) > 0, ]
+
+# format for printing
+colnames(con_coefs) <- outcomes
+colnames(trt_coefs) <- outcomes
+
+con_coefs <- as.data.frame(con_coefs)
+trt_coefs <- as.data.frame(trt_coefs)
+
+con_coefs[] <- lapply(con_coefs, function(x) sprintf("%.2f", x))
+trt_coefs[] <- lapply(trt_coefs, function(x) sprintf("%.2f", x))
+
+con_coefs[] <- lapply(con_coefs, function(x) gsub("0.00", "-", x))
+trt_coefs[] <- lapply(trt_coefs, function(x) gsub("0.00", "-", x))
+
+write.table(con_coefs,
+  file      = "tables/lasso-table-control.txt",
+  sep       = " & ",
+  quote     = FALSE)
+
+write.table(trt_coefs,
+  file      = "tables/lasso-table-treatment.txt",
+  sep       = " & ",
+  quote     = FALSE)
+
+# ~ trt heterogeneity ----
+
 n_lines <- sapply(fitted_means, nrow)
 
 tab    <- do.call(rbind, fitted_means)
