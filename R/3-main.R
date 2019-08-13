@@ -1,3 +1,7 @@
+# R command for batch: 
+# "C:\Program Files\R\R-3.6.0\bin\R.exe" CMD BATCH --vanilla R\3-main.R
+
+
 library(tidyverse)
 library(xtable)
 source("R/functions.R")
@@ -165,7 +169,6 @@ write.table(tab,
 # ~ trees ----
 for(outcome in outcomes) {
   pdf(sprintf("plots/%s/tree-%s.pdf", output_dir, outcome))
-  # debug(split_fun)
   plot_tree(tree_list[[outcome]])
   dev.off()
 }
