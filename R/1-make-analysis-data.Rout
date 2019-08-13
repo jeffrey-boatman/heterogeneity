@@ -1,0 +1,409 @@
+
+R version 3.6.0 (2019-04-26) -- "Planting of a Tree"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # R command for batch: 
+> # "C:\Program Files\R\R-3.6.0\bin\R.exe" CMD BATCH --vanilla R\1-make-analysis-data.R
+> 
+> library(tidyverse)
+-- [1mAttaching packages[22m ---------------------------------------------------------------------- tidyverse 1.2.1 --
+[32mv[39m [34mggplot2[39m 3.2.0     [32mv[39m [34mpurrr  [39m 0.3.2
+[32mv[39m [34mtibble [39m 2.1.3     [32mv[39m [34mdplyr  [39m 0.8.1
+[32mv[39m [34mtidyr  [39m 0.8.3     [32mv[39m [34mstringr[39m 1.4.0
+[32mv[39m [34mreadr  [39m 1.3.1     [32mv[39m [34mforcats[39m 0.4.0
+-- [1mConflicts[22m ------------------------------------------------------------------------- tidyverse_conflicts() --
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+> 
+> # data ----
+> p1s1 <- read.csv("../data/cenicp1s1_data_forJeffB_TEH_20190805.csv",
++   na.strings = c("NA", "9995", "9999", "99999"), as.is = TRUE)
+> # p1s2 <- read.csv("../data/cenicp1s2_data_forJeffB_TEH_20190805.csv",
+> #   na.strings = c("NA", "9995", "9999", "-9999"), as.is = TRUE) 
+> p2 <- read.csv("../data/cenicp2_data_forJeffB_20190805.csv", as.is = TRUE)
+> 
+> summary(p1s1)
+ CENIC_subject_id    treatment         treatment_label    treatment_forTEH
+ Length:717         Length:717         Length:717         Min.   :0.0000  
+ Class :character   Class :character   Class :character   1st Qu.:0.0000  
+ Mode  :character   Mode  :character   Mode  :character   Median :1.0000  
+                                                          Mean   :0.6695  
+                                                          3rd Qu.:1.0000  
+                                                          Max.   :1.0000  
+                                                                          
+ Demo_2_1_TEXT_SCR   Demo_3_SCR      race_3cat        Demo_9_SCR   
+ Min.   :18.00     Min.   :1.000   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.:29.00     1st Qu.:1.000   1st Qu.:0.0000   1st Qu.:3.000  
+ Median :43.00     Median :1.000   Median :0.0000   Median :4.000  
+ Mean   :41.62     Mean   :1.424   Mean   :0.5914   Mean   :3.633  
+ 3rd Qu.:52.00     3rd Qu.:2.000   3rd Qu.:1.0000   3rd Qu.:4.000  
+ Max.   :74.00     Max.   :2.000   Max.   :2.0000   Max.   :6.000  
+                                                                   
+    menthol       baseline_cpd    tne_nmolperml_BSL2    co_BSL2     
+ Min.   :0.000   Min.   : 2.429   Min.   :  0.10     Min.   : 0.00  
+ 1st Qu.:0.000   1st Qu.:10.333   1st Qu.: 28.55     1st Qu.:10.00  
+ Median :1.000   Median :14.286   Median : 45.10     Median :14.00  
+ Mean   :0.576   Mean   :15.459   Mean   : 55.72     Mean   :15.15  
+ 3rd Qu.:1.000   3rd Qu.:19.000   3rd Qu.: 72.70     3rd Qu.:19.00  
+ Max.   :1.000   Max.   :59.000   Max.   :256.10     Max.   :54.00  
+                 NA's   :4        NA's   :2                         
+ FTND_score_SCR   WISDM_ae_BSL1   WISDM_affat_BSL1 WISDM_aut_BSL1 
+ Min.   : 0.000   Min.   :1.000   Min.   :1.000    Min.   :1.000  
+ 1st Qu.: 3.000   1st Qu.:2.000   1st Qu.:1.000    1st Qu.:2.500  
+ Median : 5.000   Median :3.333   Median :2.000    Median :4.000  
+ Mean   : 5.106   Mean   :3.548   Mean   :2.629    Mean   :3.984  
+ 3rd Qu.: 7.000   3rd Qu.:5.000   3rd Qu.:3.667    3rd Qu.:5.500  
+ Max.   :10.000   Max.   :7.000   Max.   :7.000    Max.   :7.000  
+                                                                  
+ WISDM_ce_BSL1   WISDM_ceap_BSL1 WISDM_crav_BSL1 WISDM_loc_BSL1 
+ Min.   :1.000   Min.   :1.000   Min.   :1.000   Min.   :1.000  
+ 1st Qu.:1.667   1st Qu.:2.667   1st Qu.:3.500   1st Qu.:2.500  
+ Median :2.667   Median :4.000   Median :4.500   Median :3.500  
+ Mean   :3.103   Mean   :4.026   Mean   :4.552   Mean   :3.751  
+ 3rd Qu.:4.333   3rd Qu.:5.333   3rd Qu.:5.750   3rd Qu.:5.000  
+ Max.   :7.000   Max.   :7.000   Max.   :7.000   Max.   :7.000  
+                                                                
+ WISDM_pdm_BSL1  WISDM_sdm_BSL1  WISDM_seg_BSL1  WISDM_taste_BSL1
+ Min.   :1.000   Min.   :1.000   Min.   :1.000   Min.   :1.000   
+ 1st Qu.:3.250   1st Qu.:2.667   1st Qu.:2.667   1st Qu.:3.667   
+ Median :4.312   Median :3.429   Median :4.667   Median :5.000   
+ Mean   :4.266   Mean   :3.507   Mean   :4.402   Mean   :4.722   
+ 3rd Qu.:5.250   3rd Qu.:4.238   3rd Qu.:6.000   3rd Qu.:6.000   
+ Max.   :7.000   Max.   :7.000   Max.   :7.000   Max.   :7.000   
+                                                                 
+ WISDM_tol_BSL1  WISDM_ts_BSL1   WISDM_wc_BSL1   QSU_U_f1_BSL2  
+ Min.   :1.000   Min.   :11.25   Min.   :1.000   Min.   : 5.00  
+ 1st Qu.:3.750   1st Qu.:33.17   1st Qu.:1.000   1st Qu.:11.00  
+ Median :5.000   Median :41.25   Median :1.333   Median :19.00  
+ Mean   :4.779   Mean   :41.62   Mean   :2.122   Mean   :19.51  
+ 3rd Qu.:6.000   3rd Qu.:50.25   3rd Qu.:2.667   3rd Qu.:27.00  
+ Max.   :7.000   Max.   :77.00   Max.   :7.000   Max.   :35.00  
+                                                                
+ QSU_U_f2_BSL2   QSU_U_tot_BSL2  MNWS2_score_BSL2 CESD_score_BSL1 
+ Min.   : 5.00   Min.   :10.00   Min.   : 0.000   Min.   : 0.000  
+ 1st Qu.: 5.00   1st Qu.:18.00   1st Qu.: 3.000   1st Qu.: 4.000  
+ Median : 9.00   Median :28.00   Median : 6.000   Median : 7.000  
+ Mean   :10.63   Mean   :30.14   Mean   : 6.711   Mean   : 8.849  
+ 3rd Qu.:13.00   3rd Qu.:39.00   3rd Qu.: 9.000   3rd Qu.:12.000  
+ Max.   :35.00   Max.   :70.00   Max.   :30.000   Max.   :49.000  
+                                                                  
+ PANAS1_pos_BSL1 PANAS1_neg_BSL1    cannabis      CES1_satisfaction_BSL2
+ Min.   :10.00   Min.   :10.00   Min.   :0.0000   Min.   :0.3333        
+ 1st Qu.:29.00   1st Qu.:12.00   1st Qu.:0.0000   1st Qu.:3.0000        
+ Median :35.00   Median :14.00   Median :0.0000   Median :4.0000        
+ Mean   :34.51   Mean   :15.88   Mean   :0.2887   Mean   :3.9507        
+ 3rd Qu.:40.00   3rd Qu.:19.00   3rd Qu.:1.0000   3rd Qu.:5.0000        
+ Max.   :50.00   Max.   :45.00   Max.   :1.0000   Max.   :6.0000        
+                 NA's   :1                                              
+ CES1_reward_BSL2 CES1_aversion_BSL2 PSS_score_BSL1   CES1_enjoyment_BSL2
+ Min.   :0.000    Min.   :0.0000     Min.   : 0.000   Min.   :0.000      
+ 1st Qu.:1.200    1st Qu.:0.0000     1st Qu.: 2.000   1st Qu.:1.000      
+ Median :2.200    Median :0.0000     Median : 4.000   Median :3.000      
+ Mean   :2.362    Mean   :0.3752     Mean   : 4.497   Mean   :2.798      
+ 3rd Qu.:3.600    3rd Qu.:0.5000     3rd Qu.: 6.000   3rd Qu.:4.000      
+ Max.   :6.000    Max.   :4.0000     Max.   :14.000   Max.   :6.000      
+                                                                         
+ CES1_cravingreduction_BSL2 baseline_drinks_tlfb FTND_score_minuscigs_SCR
+ Min.   :0.000              Min.   : 0.0000      Min.   :0.000           
+ 1st Qu.:3.000              1st Qu.: 0.0000      1st Qu.:3.000           
+ Median :4.000              Median : 0.0000      Median :4.000           
+ Mean   :3.745              Mean   : 0.6063      Mean   :4.102           
+ 3rd Qu.:5.000              3rd Qu.: 0.6714      3rd Qu.:6.000           
+ Max.   :6.000              Max.   :13.7000      Max.   :7.000           
+                                                                         
+ total_cpd_week6  study_cpd_week6  non_study_cpd_week6 CESD_score_week6
+ Min.   : 0.000   Min.   : 0.000   Min.   : 0.0000     Min.   : 0.00   
+ 1st Qu.: 9.852   1st Qu.: 8.429   1st Qu.: 0.0000     1st Qu.: 4.00   
+ Median :15.571   Median :14.333   Median : 0.0000     Median : 9.00   
+ Mean   :17.849   Mean   :16.611   Mean   : 1.2373     Mean   :10.63   
+ 3rd Qu.:22.400   3rd Qu.:21.429   3rd Qu.: 0.7143     3rd Qu.:14.00   
+ Max.   :76.000   Max.   :76.000   Max.   :32.8000     Max.   :51.00   
+ NA's   :51       NA's   :51       NA's   :51          NA's   :56      
+> # summary(p1s2)
+> summary(p2)
+   studyid           Treatment         Menthol_Status         site          
+ Length:1250        Length:1250        Length:1250        Length:1250       
+ Class :character   Class :character   Class :character   Class :character  
+ Mode  :character   Mode  :character   Mode  :character   Mode  :character  
+                                                                            
+                                                                            
+                                                                            
+                                                                            
+   AGE_CLEAN     GENDER_CLEAN       race_3c       demo_9_3c    
+ Min.   :18.0   Min.   :0.0000   Min.   :1.00   Min.   :1.000  
+ 1st Qu.:34.0   1st Qu.:0.0000   1st Qu.:1.00   1st Qu.:2.000  
+ Median :47.0   Median :1.0000   Median :1.00   Median :3.000  
+ Mean   :45.1   Mean   :0.5608   Mean   :1.46   Mean   :2.518  
+ 3rd Qu.:55.0   3rd Qu.:1.0000   3rd Qu.:2.00   3rd Qu.:3.000  
+ Max.   :82.0   Max.   :1.0000   Max.   :3.00   Max.   :3.000  
+                                 NA's   :23                    
+ ftndwcpd_visit92 ftndwocpd_visit92 CESD_total_visit92 SMAST_total_visit92
+ Min.   : 0.00    Min.   :0.00      Min.   : 0.000     Min.   : 0.000     
+ 1st Qu.: 4.00    1st Qu.:3.00      1st Qu.: 2.000     1st Qu.: 1.000     
+ Median : 6.00    Median :4.00      Median : 5.000     Median : 3.000     
+ Mean   : 5.33    Mean   :4.23      Mean   : 6.041     Mean   : 2.943     
+ 3rd Qu.: 7.00    3rd Qu.:5.00      3rd Qu.: 9.000     3rd Qu.: 4.000     
+ Max.   :10.00    Max.   :7.00      Max.   :42.000     Max.   :12.000     
+                                                                          
+ DAST_total_visit92   co_visit0     WISDM_Affiliative_visit91
+ Min.   : 0.000     Min.   : 2.00   Min.   :1.000            
+ 1st Qu.: 0.000     1st Qu.:12.00   1st Qu.:1.000            
+ Median : 2.000     Median :17.00   Median :2.000            
+ Mean   : 1.699     Mean   :19.11   Mean   :2.490            
+ 3rd Qu.: 2.000     3rd Qu.:24.00   3rd Qu.:3.333            
+ Max.   :10.000     Max.   :61.00   Max.   :7.000            
+                                    NA's   :3                
+ WISDM_Automaticity_visit91 WISDM_Loss_of_Control_visit91
+ Min.   :1.000              Min.   :1.000                
+ 1st Qu.:2.250              1st Qu.:2.500                
+ Median :3.750              Median :3.750                
+ Mean   :3.815              Mean   :3.819                
+ 3rd Qu.:5.250              3rd Qu.:5.000                
+ Max.   :7.000              Max.   :7.000                
+ NA's   :3                  NA's   :3                    
+ WISDM_Cognitive_visit91 WISDM_Craving_visit91 WISDM_Cue_visit91
+ Min.   :1.000           Min.   :1.000         Min.   :1.000    
+ 1st Qu.:1.333           1st Qu.:3.000         1st Qu.:2.667    
+ Median :2.667           Median :4.250         Median :4.000    
+ Mean   :2.948           Mean   :4.357         Mean   :3.836    
+ 3rd Qu.:4.333           3rd Qu.:5.750         3rd Qu.:5.000    
+ Max.   :7.000           Max.   :7.000         Max.   :7.000    
+ NA's   :3               NA's   :3             NA's   :3        
+ WISDM_Social_visit91 WISDM_Taste_visit91 WISDM_Tolerance_visit91
+ Min.   :1.000        Min.   :1.000       Min.   :1.00           
+ 1st Qu.:2.000        1st Qu.:3.000       1st Qu.:3.75           
+ Median :3.667        Median :4.667       Median :4.75           
+ Mean   :3.774        Mean   :4.406       Mean   :4.66           
+ 3rd Qu.:5.667        3rd Qu.:6.000       3rd Qu.:6.00           
+ Max.   :7.000        Max.   :7.000       Max.   :7.00           
+ NA's   :3            NA's   :3           NA's   :3              
+ WISDM_Weight_visit91 WISDM_Affective_visit91 WISDM_p_visit91 WISDM_t_visit91
+ Min.   :1.000        Min.   :1.000           Min.   :1.000   Min.   :12.25  
+ 1st Qu.:1.000        1st Qu.:2.000           1st Qu.:3.062   1st Qu.:29.83  
+ Median :1.333        Median :3.000           Median :4.188   Median :38.83  
+ Mean   :2.028        Mean   :3.316           Mean   :4.162   Mean   :39.45  
+ 3rd Qu.:2.667        3rd Qu.:4.667           3rd Qu.:5.219   3rd Qu.:47.92  
+ Max.   :7.000        Max.   :7.000           Max.   :7.000   Max.   :77.00  
+ NA's   :3            NA's   :3               NA's   :3       NA's   :3      
+ WISDM_s_visit91 qsu_u_factor1_visit0 qsu_u_factor2_visit0 qsu_u_total_visit0
+ Min.   :1.000   Min.   : 5.00        Min.   : 5.000       Min.   :10.00     
+ 1st Qu.:2.381   1st Qu.:10.00        1st Qu.: 5.000       1st Qu.:16.00     
+ Median :3.095   Median :17.00        Median : 7.000       Median :24.00     
+ Mean   :3.257   Mean   :18.09        Mean   : 9.958       Mean   :28.05     
+ 3rd Qu.:4.000   3rd Qu.:25.00        3rd Qu.:12.000       3rd Qu.:37.00     
+ Max.   :7.000   Max.   :35.00        Max.   :35.000       Max.   :70.00     
+ NA's   :3                                                                   
+ mnws_total_visit0 PANAS_positive_visit91 PANAS_negative_visit91
+ Min.   : 0.000    Min.   :10.00          Min.   :10.00         
+ 1st Qu.: 2.000    1st Qu.:26.25          1st Qu.:11.00         
+ Median : 5.000    Median :32.00          Median :14.00         
+ Mean   : 6.122    Mean   :31.98          Mean   :15.21         
+ 3rd Qu.: 9.000    3rd Qu.:38.00          3rd Qu.:18.00         
+ Max.   :26.000    Max.   :50.00          Max.   :49.00         
+                   NA's   :4              NA's   :4             
+ pss_total_visit0 ces1_satisfaction_visit0 ces1_psych_reward_visit0
+ Min.   : 0.000   Min.   :1.000            Min.   :1.000           
+ 1st Qu.: 2.000   1st Qu.:3.667            1st Qu.:2.000           
+ Median : 4.000   Median :4.667            Median :3.000           
+ Mean   : 4.184   Mean   :4.696            Mean   :3.116           
+ 3rd Qu.: 6.000   3rd Qu.:5.667            3rd Qu.:4.000           
+ Max.   :15.000   Max.   :7.000            Max.   :7.000           
+                                                                   
+ ces1_aversion_visit0 ces1_3_clean_visit0 ces1_11_clean_visit0 totalcpd_visit0
+ Min.   :1.000        Min.   :1.000       Min.   :1.000        Min.   : 3.40  
+ 1st Qu.:1.000        1st Qu.:2.000       1st Qu.:3.000        1st Qu.:10.71  
+ Median :1.000        Median :4.000       Median :5.000        Median :15.64  
+ Mean   :1.274        Mean   :3.493       Mean   :4.522        Mean   :17.10  
+ 3rd Qu.:1.500        3rd Qu.:4.000       3rd Qu.:6.000        3rd Qu.:21.00  
+ Max.   :5.000        Max.   :7.000       Max.   :7.000        Max.   :63.29  
+                                                               NA's   :1      
+   tne_visit0       TNE_uncorrected_visit0 totalcpd_visit20 studycpd_visit20
+ Min.   :  0.2059   Min.   :  0.394        Min.   : 0.000   Min.   : 0.000  
+ 1st Qu.: 40.8824   1st Qu.: 39.767        1st Qu.: 7.481   1st Qu.: 6.148  
+ Median : 61.9823   Median : 65.546        Median :15.222   Median :14.167  
+ Mean   : 68.3698   Mean   : 75.904        Mean   :17.258   Mean   :16.183  
+ 3rd Qu.: 87.7726   3rd Qu.: 96.719        3rd Qu.:23.778   3rd Qu.:23.000  
+ Max.   :497.8457   Max.   :542.486        Max.   :93.333   Max.   :86.667  
+                                           NA's   :269      NA's   :269     
+ TNE_uncorrected_visit20 cesd_total_visit20 cesd_total_visit8 totalcpd_visit8 
+ Min.   :  0.0327        Min.   : 0.000     Min.   : 0.00     Min.   :  0.00  
+ 1st Qu.:  1.7313        1st Qu.: 3.000     1st Qu.: 4.00     1st Qu.: 10.33  
+ Median :  9.8039        Median : 7.000     Median : 8.00     Median : 17.00  
+ Mean   : 38.3096        Mean   : 8.717     Mean   :10.13     Mean   : 18.82  
+ 3rd Qu.: 61.3070        3rd Qu.:12.000     3rd Qu.:14.00     3rd Qu.: 24.06  
+ Max.   :401.7682        Max.   :51.000     Max.   :48.00     Max.   :184.88  
+ NA's   :293             NA's   :292        NA's   :202       NA's   :120     
+ studycpd_visit8 
+ Min.   : 0.000  
+ 1st Qu.: 9.441  
+ Median :16.264  
+ Mean   :17.810  
+ 3rd Qu.:23.755  
+ Max.   :90.000  
+ NA's   :120     
+> 
+> 
+> # replace names for combining ----
+> var_map <- read.csv("misc/variable_mapping.csv",
++   na.strings = "", as.is = TRUE)
+> 
+> # ~ p1s1 ----
+> to_replace <- names(p1s1) %in% var_map$p1s1
+> old_names  <- names(p1s1)[to_replace]
+> new_names  <- var_map$new_name[match(names(p1s1)[to_replace], 
++   var_map$p1s1, nomatch = NULL)] 
+> #cbind(old_names, new_names)
+> names(p1s1)[to_replace] <- new_names
+> 
+> # ~ p1s2 ----
+> # to_replace <- names(p1s2) %in% var_map$p1s2
+> # old_names  <- names(p1s2)[to_replace]
+> # new_names  <- var_map$new_name[match(names(p1s2)[to_replace], 
+> #   var_map$p1s2, nomatch = NULL)] 
+> # #cbind(old_names, new_names)
+> # names(p1s2)[to_replace] <- new_names
+> 
+> # ~ p2 ----
+> to_replace <- names(p2) %in% var_map$p2
+> old_names  <- names(p2)[to_replace]
+> new_names  <- var_map$new_name[match(names(p2)[to_replace], 
++   var_map$p2, nomatch = NULL)] 
+> #cbind(old_names, new_names)
+> names(p2)[to_replace] <- new_names
+> 
+> # data.frame to tibble
+> p1s1 <- as_tibble(p1s1)
+> # p1s2 <- as_tibble(p1s2)
+> p2   <- as_tibble(p2)
+> 
+> # create treatment, control, and study indicators ----
+> p1s1$study <- "P1S1"
+> # p1s2$study <- "P1S2"
+> p2$study   <- "P2"
+> 
+> # ~ p1s1 ----
+> p1s1 <- p1s1 %>%
++   mutate(teh_treatment = treatment_forTEH,
++          teh_control   = 1 - teh_treatment)
+> 
+> 
+> 
+> # p1s1 %>% select(treatment_label, treatment_forTEH, teh_treatment, teh_control)
+> 
+> # ~ p1s2 ----
+> #table(p1s2$treatment, p1s2$treatment_label)
+> # p1s2 <- p1s2 %>%
+> #   mutate(teh_treatment = 1 * treatment %in% c("A", "B"),
+> #          teh_control   = 1 - teh_treatment)
+> # p1s2 %>% select(treatment, treatment_label, teh_treatment, teh_control)
+> 
+> # ~ p2 ----
+> # A = gradual, B = immediate, C = control
+> p2 <- p2 %>%
++   mutate(teh_treatment = 1 * (Treatment == "B"),
++          teh_control   = 1 * (Treatment == "C"))
+> p2 <- p2 %>% filter(teh_control + teh_treatment == 1)
+> # with(p2, table(Treatment, teh_treatment))
+> # with(p2, table(Treatment, teh_control))
+> # p2 %>% select(Treatment, teh_treatment, teh_control)
+> 
+> # combine data ----
+> p1s1 <- rename(p1s1, id = CENIC_subject_id)
+> # p1s2 <- rename(p1s2, id = CENIC_subject_id)
+> p2   <- rename(p2, id = studyid)
+> 
+> # ~ making menthol the same ----
+> # p1s2 <- p1s2 %>% mutate(menthol = 1 * (menthol == "Menthol"))
+> p2   <- p2   %>% mutate(menthol = 1 * (menthol == "Menthol"))
+> 
+> 
+> # ~ making race the same
+> message("This assumes that P2 1-2-3 is equivalent to 0-1-2 coding of P1S1 and P1S2")
+This assumes that P2 1-2-3 is equivalent to 0-1-2 coding of P1S1 and P1S2
+> p2$race <- p2$race - 1
+> 
+> # ~ make gender the same ----
+> message("This assumes that P2 0-1 coding is equivalent to 1-2 coding of P1")
+This assumes that P2 0-1 coding is equivalent to 1-2 coding of P1
+> p1s1$gender <- p1s1$gender - 1
+> # p1s2$gender <- p1s2$gender - 1
+> 
+> # ~ making race the same ----
+> # message("This assumes that P2 1-2-3 is equivalent to 0-1-2 coding of P1S1 and P1S2")
+> # p2$race <- p2$race - 1 # wrong!
+> 
+> message("This code will drop columns from each data set if the column names don't
++   appear in the other data sets")
+This code will drop columns from each data set if the column names don't
+  appear in the other data sets
+> 
+> 
+> message("Only keep variables in both data sets")
+Only keep variables in both data sets
+> 
+> inames <- intersect(names(p1s1), names(p2))
+> 
+> p1s1[, setdiff(names(p1s1), inames)] <- NULL
+> p2[, setdiff(names(p2), inames)]     <- NULL
+> 
+> # checking. this should equal TRUE
+> all(sort(names(p1s1)) == sort(names(p2)))
+[1] TRUE
+> 
+> analysis <- rbind(p1s1, p2)
+> 
+> # ~ label education ----
+> table(analysis$edu)
+
+  1   2   3   4   5   6 
+ 74 301 690 293  82  29 
+> analysis$edu <- factor(analysis$edu)
+> levels(analysis$edu) <- c(1, 1, 2, 3, 3, 3)
+> analysis$edu <- factor(analysis$edu, 
++   labels = c("HSorLess", "HSgrad", "SomeCollegeOrMore"))
+> table(analysis$edu)
+
+         HSorLess            HSgrad SomeCollegeOrMore 
+              375               690               404 
+> 
+> # ~ label race ----
+> table(analysis$race)
+
+  0   1   2 
+832 487 137 
+> analysis$race <- factor(analysis$race, labels = c("white", "black", "other"))
+> table(analysis$race)
+
+white black other 
+  832   487   137 
+> 
+> # ~ label gender ---- 
+> table(analysis$gender)
+
+  0   1 
+752 717 
+> analysis$gender <- factor(analysis$gender, labels = c("male", "female"))
+> 
+> analysis <- na.omit(analysis)
+> 
+> # save to RData ---- 
+> save(list = "analysis", file = "../RData/analysis.RData")
+> 
+> proc.time()
+   user  system elapsed 
+   1.06    0.35    1.75 

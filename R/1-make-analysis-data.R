@@ -1,3 +1,6 @@
+# R command for batch: 
+# "C:\Program Files\R\R-3.6.0\bin\R.exe" CMD BATCH --vanilla R\1-make-analysis-data.R
+
 library(tidyverse)
 
 # data ----
@@ -91,15 +94,15 @@ message("This assumes that P2 1-2-3 is equivalent to 0-1-2 coding of P1S1 and P1
 p2$race <- p2$race - 1
 
 # ~ make gender the same ----
-warning("This assumes that P2 0-1 coding is equivalent to 1-2 coding of P1")
+message("This assumes that P2 0-1 coding is equivalent to 1-2 coding of P1")
 p1s1$gender <- p1s1$gender - 1
-p1s2$gender <- p1s2$gender - 1
+# p1s2$gender <- p1s2$gender - 1
 
 # ~ making race the same ----
-warning("This assumes that P2 1-2-3 is equivalent to 0-1-2 coding of P1S1 and P1S2")
-p2$race <- p2$race - 1
+# message("This assumes that P2 1-2-3 is equivalent to 0-1-2 coding of P1S1 and P1S2")
+# p2$race <- p2$race - 1 # wrong!
 
-warning("This code will drop columns from each data set if the column names don't
+message("This code will drop columns from each data set if the column names don't
   appear in the other data sets")
 
 

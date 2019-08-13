@@ -1,9 +1,10 @@
 Control & Treatment
-total_cpd & (Intercept) & 4.59 & 3.89
-total_cpd & cpd_bsl & 0.84 & 0.86
+total_cpd & (Intercept) & 4.59 & -1.11
+total_cpd & age & - & 0.05
+total_cpd & cpd_bsl & 0.84 & 0.85
 total_cpd & ftnd_w_cpd & 0.21 & -
-cesd & (Intercept) & 4.83 & 3.21
-cesd & mnws_bsl & - & 0.11
-cesd & cesd_bsl & 0.48 & 0.08
-cesd & panas_neg_bsl & 0.18 & 0.25
-cesd & pss_bsl & 0.02 & 0.45
+cesd & (Intercept) & 6.97 & 6.29
+cesd & mnws_bsl & - & 0.23
+cesd & cesd_bsl & 0.38 & 0.05
+cesd & panas_neg_bsl & 0.09 & 0.09
+cesd & pss_bsl & - & 0.28

@@ -33,3 +33,37 @@ rtree <- function(X, Y){
   fit
 }
 
+# function for plotting trees
+plot_tree <- function(tree) {
+  require(rpart.plot)
+  prp(tree, type = 3, extra = 101, fallen.leaves = TRUE, split.fun = split_fun)  
+}
+
+
+# function for fixing names in plotted tree
+split_fun <- function(x, labs, digits, varlen, faclen) {
+  require(tibble)
+  ll <- tribble(
+    ~ old,          ~ new,
+     "ftnd_w_c",     "FTND",
+     "ftnd_wo_ ",    "FTND (No CPD)",
+     "mnws_bsl",     "MNWS",
+     "age",          "Age",
+     "ltne_nmo",     "TNE",
+     "qsu_f1_b",     "QSU Factor 1"
+  )
+  olds <- ll$old
+  news <- ll$new
+  for (i in seq_along(olds)) {
+    labs <- gsub(olds[i], news[i], labs)
+  }
+  # labs <- gsub("^BSL_co", "Baseline Expired Carbon Monoxide (ppm)", labs)
+  # labs <- gsub("^WISDM_to", "WISDM Tolerance", labs)
+  # labs <- gsub("^WISDM_so", "WISDM Social Goads", labs)
+  for(i in seq_along(labs)) {
+    # split labs[i] into multiple lines
+    labs[i] <- paste(strwrap(labs[i], width=20), collapse="\n")
+  }
+  labs
+}
+

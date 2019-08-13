@@ -10,6 +10,10 @@ set.seed(123)
 
 load("../RData/analysis.RData")
 analysis <- analysis %>% rename(trt = teh_treatment)
+analysis <- analysis %>% 
+  mutate(tne_nmolperml_bsl = log(tne_nmolperml_bsl)) %>%
+  rename("ltne" = "tne_nmolperml_bsl")
+
 
 # outcomes that will be used throughout analysis.
 outcomes <- c("total_cpd", "cesd")
@@ -153,3 +157,13 @@ write.table(tab,
   file      = sprintf("tables/%s/tree-outomes.txt", table_dir),
   sep       = " & ",
   quote     = FALSE)
+
+# plots ----
+
+# ~ histograms ----
+
+# ~ trees ----
+pdf("plots/all/tree-test.pdf")
+debug(split_fun)
+plot_tree(tree_list[[1]])
+dev.off()
