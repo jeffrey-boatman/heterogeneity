@@ -150,6 +150,6 @@ colnames(tab) <- c("node", outcomes)
 rownames(tab) <- rnames
 
 write.table(tab,
-  file      = "tables/tree-table.txt",
+  file      = sprintf("tables/%s/tree-outomes.txt", table_dir),
   sep       = " & ",
   quote     = FALSE)
