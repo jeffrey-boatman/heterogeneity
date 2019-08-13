@@ -6,7 +6,6 @@ source("R/functions.R")
 table_dir <- "all"
 # ---------------------------------------------------- #
 
-
 set.seed(123)
 
 load("../RData/analysis.RData")
@@ -17,7 +16,7 @@ outcomes <- c("total_cpd", "cesd")
 
 # training data is CENIC-P2
 train <- analysis %>% filter(study == "P2")
-trt   <- as.logical(train$trt) # only for P2!
+trt   <- as.logical(train$trt) # treatment indicator, only for P2!
 
 
 # matrix of predictors, outcomes.
@@ -61,9 +60,16 @@ where_tib <- as_tibble(where_tib)
 where_names      <- paste0("where_", names(where_tib))
 names(where_tib) <- where_names
 
-# reality check. use the 'where' matrix to compute fitted values.
-# when done, these should match fitted_trt_diffs. make sure this
-# passes before computing fitted values within each tree. 
+# now we want to compute means within terminal nodes based
+# on tree built for other outcomes. To do this, we only need to
+# know which observations belong to the same terminal node.
+# Then we can compute means within these groups. To do this,
+# use the 'where' matrix to compute fitted values. To check that
+# this works, test it by using the method to compute values
+# on the original outcome. These should match the predicted
+# values obtainred from the tree predict function.
+# make sure this passes before proceeding. 
+
 check <- list()
 
 for (outcome in outcomes) {
@@ -78,7 +84,8 @@ for (outcome in outcomes) {
 
 check <- as_tibble(check)
 
-# if TRUE, then proceed. If not, debug until TRUE.
+# if TRUE, then proceed and compute means using this method.
+# If not, debug until TRUE.
 all_equal(round(check, 8), round(fitted_trt_diffs, 8))
 
 # compute means within each where group.
