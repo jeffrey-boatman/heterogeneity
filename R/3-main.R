@@ -3,7 +3,7 @@ library(xtable)
 source("R/functions.R")
 
 # --- global variables dictating output and cohort --- #
-table_dir <- "all"
+output_dir <- "all"
 # ---------------------------------------------------- #
 
 set.seed(123)
@@ -136,7 +136,7 @@ coefs[] <- lapply(coefs, function(x) sprintf("%.2f", x))
 coefs[] <- lapply(coefs, function(x) gsub("0.00", "-", x))
 
 write.table(coefs,
-  file      = sprintf("tables/%s/lasso-coefs.txt", table_dir),
+  file      = sprintf("tables/%s/lasso-coefs.txt", output_dir),
   sep       = " & ",
   quote     = FALSE)
 
@@ -154,7 +154,7 @@ colnames(tab) <- c("node", outcomes)
 rownames(tab) <- rnames
 
 write.table(tab,
-  file      = sprintf("tables/%s/tree-outomes.txt", table_dir),
+  file      = sprintf("tables/%s/tree-outomes.txt", output_dir),
   sep       = " & ",
   quote     = FALSE)
 
@@ -163,7 +163,9 @@ write.table(tab,
 # ~ histograms ----
 
 # ~ trees ----
-pdf("plots/all/tree-test.pdf")
-debug(split_fun)
-plot_tree(tree_list[[1]])
-dev.off()
+for(outcome in outcomes) {
+  pdf(sprintf("plots/%s/tree-%s.pdf", output_dir, outcome))
+  # debug(split_fun)
+  plot_tree(tree_list[[outcome]])
+  dev.off()
+}

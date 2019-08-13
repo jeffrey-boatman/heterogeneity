@@ -50,7 +50,10 @@ split_fun <- function(x, labs, digits, varlen, faclen) {
      "mnws_bsl",     "MNWS",
      "age",          "Age",
      "ltne_nmo",     "TNE",
-     "qsu_f1_b",     "QSU Factor 1"
+     "qsu_f1_b",     "QSU Factor 1",
+     "co_bsl",       "CO",
+     "cesd_bsl",     "CESD",
+     "wisdm_se",     "WISDM Social/Environmental Goads"
   )
   olds <- ll$old
   news <- ll$new
