@@ -154,13 +154,20 @@ dtab   <- dim(tab)
 tab    <- as.numeric(sprintf("%.2f", as.matrix(tab)))
 tab    <- array(tab, dim = dtab)
 
+tab <- apply(tab, 2, function(x) sprintf("%0.2f", x))
+
 colnames(tab) <- c("node", outcomes)
-rownames(tab) <- rnames
+# rownames(tab) <- rnames
+
+tab <- as.data.frame(tab)
+
+tab$node <- rnames
 
 write.table(tab,
   file      = sprintf("tables/%s/tree-outomes.txt", output_dir),
   sep       = " & ",
-  quote     = FALSE)
+  quote     = FALSE,
+  row.names = FALSE)
 
 # plots ----
 
