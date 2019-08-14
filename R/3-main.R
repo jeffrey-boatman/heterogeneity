@@ -172,6 +172,15 @@ write.table(tab,
 # plots ----
 
 # ~ histograms ----
+title_names <- c("Total CPD", "CESD")
+pdf(sprintf("plots/%s/trt-diff-histograms.pdf", output_dir))
+par(mfrow = c(2, 2))
+for(outcome in outcomes) {
+  hist(trt_diffs[, outcome, drop = TRUE],
+    main = title_names[match(outcome, outcomes)],
+    xlab = title_names[match(outcome, outcomes)])
+}
+dev.off()
 
 # ~ trees ----
 for(outcome in outcomes) {
