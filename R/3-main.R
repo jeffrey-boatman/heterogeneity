@@ -8,6 +8,7 @@ source("R/functions.R")
 
 # --- global variables dictating output and cohort --- #
 output_dir <- "all"
+cohort <- "all"
 # ---------------------------------------------------- #
 
 set.seed(123)
@@ -18,9 +19,14 @@ analysis <- analysis %>%
   mutate(tne_nmolperml_bsl = log(tne_nmolperml_bsl)) %>%
   rename("ltne" = "tne_nmolperml_bsl")
 
+# if cohort = all, then ...
+# drop tne_20.
+# drop week 6/8 outcomes
+to_drop <- c("tne_20", "study_cpd", "cesd")
+analysis[, to_drop] <- NULL
 
 # outcomes that will be used throughout analysis.
-outcomes <- c("total_cpd", "cesd")
+outcomes <- c("total_cpd_20", "cesd_20", "co_20")
 
 # training data is CENIC-P2
 train <- analysis %>% filter(study == "P2")
@@ -50,6 +56,36 @@ for (outcome in outcomes) {
 # create matrix with estimated treatment effects
 trt_diffs <- sapply(trt_diffs_list, '[[', "trt_diff")
 trt_diffs <- as_tibble(trt_diffs)
+
+# cross validation for tree depth ----
+depths <- 1:8
+mse <- array(dim = c(length(depths), length(outcomes)),
+  dimnames = list(depth = depths, outcome = outcomes))
+
+k <- 20 # number of folds
+folds <- rep(seq_len(k), length.out = nrow(Xtrain))
+folds <- sample(folds)
+
+# loop over outcomes
+for (outcome in outcomes) {
+  # loop over depth
+  for (depth in depths) {
+    e <- numeric(nrow(Xtrain))
+    # loop over folds
+    for(fold in seq_len(k)) {
+      message(outcome, ", ", depth, ", ", fold)
+      train_tree <- rtree(Xtrain[folds != fold, ], 
+        trt_diffs[folds != fold, outcome, drop = TRUE], 
+        maxdepth = depth,
+        minbucket = 2)
+      yhat <- unname(predict(train_tree, 
+        newdata = as.data.frame(Xtrain[folds == fold, ])))
+      y <- trt_diffs[folds == fold, outcome, drop = TRUE]
+      e[folds == fold] <- y - yhat
+    }
+    mse[depth, outcome] <- mean(e ^ 2)
+  }
+}
 
 # create the tree for each column in treat_diffs
 # debug(rtree)

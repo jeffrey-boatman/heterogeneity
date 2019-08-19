@@ -23,12 +23,12 @@ estimate_trt_diff <- function(X, X0, X1, Y0, Y1){
   out
 }
 
-rtree <- function(X, Y){
+rtree <- function(X, Y, maxdepth = 4, minbucket = 2){
   require(rpart)
   data  <- as.data.frame(cbind(Y, X))
   fit <- rpart(Y ~ ., dat = data, 
     method  = "anova", 
-    control = rpart.control(maxdepth = 4), 
+    control = rpart.control(maxdepth = maxdepth, minbucket = minbucket), 
     model   = TRUE)
   fit
 }

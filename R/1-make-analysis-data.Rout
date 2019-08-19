@@ -21,21 +21,21 @@ Type 'q()' to quit R.
 > # "C:\Program Files\R\R-3.6.0\bin\R.exe" CMD BATCH --vanilla R\1-make-analysis-data.R
 > 
 > library(tidyverse)
--- [1mAttaching packages[22m ---------------------------------------------------------------------- tidyverse 1.2.1 --
+-- [1mAttaching packages[22m ------------------------------------- tidyverse 1.2.1 --
 [32mv[39m [34mggplot2[39m 3.2.0     [32mv[39m [34mpurrr  [39m 0.3.2
 [32mv[39m [34mtibble [39m 2.1.3     [32mv[39m [34mdplyr  [39m 0.8.1
 [32mv[39m [34mtidyr  [39m 0.8.3     [32mv[39m [34mstringr[39m 1.4.0
 [32mv[39m [34mreadr  [39m 1.3.1     [32mv[39m [34mforcats[39m 0.4.0
--- [1mConflicts[22m ------------------------------------------------------------------------- tidyverse_conflicts() --
+-- [1mConflicts[22m ---------------------------------------- tidyverse_conflicts() --
 [31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
 [31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
 > 
 > # data ----
-> p1s1 <- read.csv("../data/cenicp1s1_data_forJeffB_TEH_20190805.csv",
-+   na.strings = c("NA", "9995", "9999", "99999"), as.is = TRUE)
-> # p1s2 <- read.csv("../data/cenicp1s2_data_forJeffB_TEH_20190805.csv",
+> p1s1 <- read.csv("../data/cenicp1s1_data_forJeffB_TEH_20190816.csv",
++   na.strings = c("NA", "9995", "9999", "99999", "99995"), as.is = TRUE)
+> # p1s2 <- read.csv("../data/cenicp1s2_data_forJeffB_TEH_20190816.csv",
 > #   na.strings = c("NA", "9995", "9999", "-9999"), as.is = TRUE) 
-> p2 <- read.csv("../data/cenicp2_data_forJeffB_20190805.csv", as.is = TRUE)
+> p2 <- read.csv("../data/cenicp2_data_forJeffB_20190816.csv", as.is = TRUE)
 > 
 > summary(p1s1)
  CENIC_subject_id    treatment         treatment_label    treatment_forTEH
@@ -134,6 +134,14 @@ Type 'q()' to quit R.
  3rd Qu.:22.400   3rd Qu.:21.429   3rd Qu.: 0.7143     3rd Qu.:14.00   
  Max.   :76.000   Max.   :76.000   Max.   :32.8000     Max.   :51.00   
  NA's   :51       NA's   :51       NA's   :51          NA's   :56      
+ tne_nmolperml_week6 creatinine_mgperdl_week6
+ Min.   :  0.10      Min.   :0.070           
+ 1st Qu.: 12.60      1st Qu.:0.760           
+ Median : 32.80      Median :1.250           
+ Mean   : 41.68      Mean   :1.403           
+ 3rd Qu.: 58.40      3rd Qu.:1.870           
+ Max.   :332.60      Max.   :4.930           
+ NA's   :64          NA's   :64              
 > # summary(p1s2)
 > summary(p2)
    studyid           Treatment         Menthol_Status         site          
@@ -248,14 +256,299 @@ Type 'q()' to quit R.
  3rd Qu.: 61.3070        3rd Qu.:12.000     3rd Qu.:14.00     3rd Qu.: 24.06  
  Max.   :401.7682        Max.   :51.000     Max.   :48.00     Max.   :184.88  
  NA's   :293             NA's   :292        NA's   :202       NA's   :120     
- studycpd_visit8 
- Min.   : 0.000  
- 1st Qu.: 9.441  
- Median :16.264  
- Mean   :17.810  
- 3rd Qu.:23.755  
- Max.   :90.000  
- NA's   :120     
+ studycpd_visit8  TNE_uncorrected_visit8   co_visit20  
+ Min.   : 0.000   Min.   :   0.142       Min.   : 0.0  
+ 1st Qu.: 9.441   1st Qu.:  12.652       1st Qu.: 8.0  
+ Median :16.264   Median :  40.145       Median :15.0  
+ Mean   :17.810   Mean   :  53.337       Mean   :16.6  
+ 3rd Qu.:23.755   3rd Qu.:  76.473       3rd Qu.:22.0  
+ Max.   :90.000   Max.   :1067.072       Max.   :61.0  
+ NA's   :120      NA's   :190            NA's   :292   
+> 
+> lapply(Filter(is.numeric, p1s1), range, na.rm = TRUE)
+$treatment_forTEH
+[1] 0 1
+
+$Demo_2_1_TEXT_SCR
+[1] 18 74
+
+$Demo_3_SCR
+[1] 1 2
+
+$race_3cat
+[1] 0 2
+
+$Demo_9_SCR
+[1] 1 6
+
+$menthol
+[1] 0 1
+
+$baseline_cpd
+[1]  2.428571 59.000000
+
+$tne_nmolperml_BSL2
+[1]   0.1 256.1
+
+$co_BSL2
+[1]  0 54
+
+$FTND_score_SCR
+[1]  0 10
+
+$WISDM_ae_BSL1
+[1] 1 7
+
+$WISDM_affat_BSL1
+[1] 1 7
+
+$WISDM_aut_BSL1
+[1] 1 7
+
+$WISDM_ce_BSL1
+[1] 1 7
+
+$WISDM_ceap_BSL1
+[1] 1 7
+
+$WISDM_crav_BSL1
+[1] 1 7
+
+$WISDM_loc_BSL1
+[1] 1 7
+
+$WISDM_pdm_BSL1
+[1] 1 7
+
+$WISDM_sdm_BSL1
+[1] 1 7
+
+$WISDM_seg_BSL1
+[1] 1 7
+
+$WISDM_taste_BSL1
+[1] 1 7
+
+$WISDM_tol_BSL1
+[1] 1 7
+
+$WISDM_ts_BSL1
+[1] 11.25 77.00
+
+$WISDM_wc_BSL1
+[1] 1 7
+
+$QSU_U_f1_BSL2
+[1]  5 35
+
+$QSU_U_f2_BSL2
+[1]  5 35
+
+$QSU_U_tot_BSL2
+[1] 10 70
+
+$MNWS2_score_BSL2
+[1]  0 30
+
+$CESD_score_BSL1
+[1]  0 49
+
+$PANAS1_pos_BSL1
+[1] 10 50
+
+$PANAS1_neg_BSL1
+[1] 10 45
+
+$cannabis
+[1] 0 1
+
+$CES1_satisfaction_BSL2
+[1] 0.3333333 6.0000000
+
+$CES1_reward_BSL2
+[1] 0 6
+
+$CES1_aversion_BSL2
+[1] 0 4
+
+$PSS_score_BSL1
+[1]  0 14
+
+$CES1_enjoyment_BSL2
+[1] 0 6
+
+$CES1_cravingreduction_BSL2
+[1] 0 6
+
+$baseline_drinks_tlfb
+[1]  0.0 13.7
+
+$FTND_score_minuscigs_SCR
+[1] 0 7
+
+$total_cpd_week6
+[1]  0 76
+
+$study_cpd_week6
+[1]  0 76
+
+$non_study_cpd_week6
+[1]  0.0 32.8
+
+$CESD_score_week6
+[1]  0 51
+
+$tne_nmolperml_week6
+[1]   0.1 332.6
+
+$creatinine_mgperdl_week6
+[1] 0.07 4.93
+
+> lapply(Filter(is.numeric, p2), range, na.rm = TRUE)
+$AGE_CLEAN
+[1] 18 82
+
+$GENDER_CLEAN
+[1] 0 1
+
+$race_3c
+[1] 1 3
+
+$demo_9_3c
+[1] 1 3
+
+$ftndwcpd_visit92
+[1]  0 10
+
+$ftndwocpd_visit92
+[1] 0 7
+
+$CESD_total_visit92
+[1]  0 42
+
+$SMAST_total_visit92
+[1]  0 12
+
+$DAST_total_visit92
+[1]  0 10
+
+$co_visit0
+[1]  2 61
+
+$WISDM_Affiliative_visit91
+[1] 1 7
+
+$WISDM_Automaticity_visit91
+[1] 1 7
+
+$WISDM_Loss_of_Control_visit91
+[1] 1 7
+
+$WISDM_Cognitive_visit91
+[1] 1 7
+
+$WISDM_Craving_visit91
+[1] 1 7
+
+$WISDM_Cue_visit91
+[1] 1 7
+
+$WISDM_Social_visit91
+[1] 1 7
+
+$WISDM_Taste_visit91
+[1] 1 7
+
+$WISDM_Tolerance_visit91
+[1] 1 7
+
+$WISDM_Weight_visit91
+[1] 1 7
+
+$WISDM_Affective_visit91
+[1] 1 7
+
+$WISDM_p_visit91
+[1] 1 7
+
+$WISDM_t_visit91
+[1] 12.25 77.00
+
+$WISDM_s_visit91
+[1] 1 7
+
+$qsu_u_factor1_visit0
+[1]  5 35
+
+$qsu_u_factor2_visit0
+[1]  5 35
+
+$qsu_u_total_visit0
+[1] 10 70
+
+$mnws_total_visit0
+[1]  0 26
+
+$PANAS_positive_visit91
+[1] 10 50
+
+$PANAS_negative_visit91
+[1] 10 49
+
+$pss_total_visit0
+[1]  0 15
+
+$ces1_satisfaction_visit0
+[1] 1 7
+
+$ces1_psych_reward_visit0
+[1] 1 7
+
+$ces1_aversion_visit0
+[1] 1 5
+
+$ces1_3_clean_visit0
+[1] 1 7
+
+$ces1_11_clean_visit0
+[1] 1 7
+
+$totalcpd_visit0
+[1]  3.40000 63.28571
+
+$tne_visit0
+[1]   0.2058935 497.8456726
+
+$TNE_uncorrected_visit0
+[1]   0.3939961 542.4862775
+
+$totalcpd_visit20
+[1]  0.00000 93.33333
+
+$studycpd_visit20
+[1]  0.00000 86.66667
+
+$TNE_uncorrected_visit20
+[1]   0.03270125 401.76822270
+
+$cesd_total_visit20
+[1]  0 51
+
+$cesd_total_visit8
+[1]  0 48
+
+$totalcpd_visit8
+[1]   0.000 184.875
+
+$studycpd_visit8
+[1]  0 90
+
+$TNE_uncorrected_visit8
+[1]    0.1419864 1067.0715070
+
+$co_visit20
+[1]  0 61
+
 > 
 > 
 > # replace names for combining ----
@@ -301,9 +594,20 @@ Type 'q()' to quit R.
 +   mutate(teh_treatment = treatment_forTEH,
 +          teh_control   = 1 - teh_treatment)
 > 
-> 
-> 
 > # p1s1 %>% select(treatment_label, treatment_forTEH, teh_treatment, teh_control)
+> 
+> table(p1s1$teh_treatment, p1s1$treatment_label)
+   
+    0.4 mg/g 0.4 mg/g (HT) 1.3 mg/g 15.8 mg/g 2.4 mg/g Usual brand
+  0        0             0        0       119        0         118
+  1      119           123      119         0      119           0
+> table(p1s1$teh_control, p1s1$treatment_label)
+   
+    0.4 mg/g 0.4 mg/g (HT) 1.3 mg/g 15.8 mg/g 2.4 mg/g Usual brand
+  0      119           123      119         0      119           0
+  1        0             0        0       119        0         118
+> 
+> 
 > 
 > # ~ p1s2 ----
 > #table(p1s2$treatment, p1s2$treatment_label)
@@ -318,9 +622,19 @@ Type 'q()' to quit R.
 +   mutate(teh_treatment = 1 * (Treatment == "B"),
 +          teh_control   = 1 * (Treatment == "C"))
 > p2 <- p2 %>% filter(teh_control + teh_treatment == 1)
-> # with(p2, table(Treatment, teh_treatment))
-> # with(p2, table(Treatment, teh_control))
+> 
 > # p2 %>% select(Treatment, teh_treatment, teh_control)
+> table(p2$teh_treatment, p2$Treatment)
+   
+      B   C
+  0   0 249
+  1 503   0
+> table(p2$teh_control, p2$Treatment)
+   
+      B   C
+  0 503   0
+  1   0 249
+> 
 > 
 > # combine data ----
 > p1s1 <- rename(p1s1, id = CENIC_subject_id)
@@ -351,15 +665,24 @@ This assumes that P2 0-1 coding is equivalent to 1-2 coding of P1
 +   appear in the other data sets")
 This code will drop columns from each data set if the column names don't
   appear in the other data sets
+> # but be sure to keep week 20 outcomes and week 20 tne in p2
 > 
-> 
-> message("Only keep variables in both data sets")
-Only keep variables in both data sets
+> p2_keepers <- c("tne_20", "total_cpd_20", "cesd_20", "co_20")
 > 
 > inames <- intersect(names(p1s1), names(p2))
 > 
+> 
 > p1s1[, setdiff(names(p1s1), inames)] <- NULL
-> p2[, setdiff(names(p2), inames)]     <- NULL
+> 
+> # p1s1 na.omit ----
+> p1s1 <- na.omit(p1s1)
+> 
+> p1s1[, p2_keepers] <- NA
+> 
+> p2[, setdiff(names(p2), c(inames, p2_keepers))] <- NULL
+> 
+> # p2 na.omit ----
+> p2 <- na.omit(p2)
 > 
 > # checking. this should equal TRUE
 > all(sort(names(p1s1)) == sort(names(p2)))
@@ -371,7 +694,7 @@ Only keep variables in both data sets
 > table(analysis$edu)
 
   1   2   3   4   5   6 
- 74 301 690 293  82  29 
+ 58 228 533 265  82  28 
 > analysis$edu <- factor(analysis$edu)
 > levels(analysis$edu) <- c(1, 1, 2, 3, 3, 3)
 > analysis$edu <- factor(analysis$edu, 
@@ -379,31 +702,31 @@ Only keep variables in both data sets
 > table(analysis$edu)
 
          HSorLess            HSgrad SomeCollegeOrMore 
-              375               690               404 
+              286               533               375 
 > 
 > # ~ label race ----
 > table(analysis$race)
 
   0   1   2 
-832 487 137 
+672 410 112 
 > analysis$race <- factor(analysis$race, labels = c("white", "black", "other"))
 > table(analysis$race)
 
 white black other 
-  832   487   137 
+  672   410   112 
 > 
 > # ~ label gender ---- 
 > table(analysis$gender)
 
   0   1 
-752 717 
+626 568 
 > analysis$gender <- factor(analysis$gender, labels = c("male", "female"))
 > 
-> analysis <- na.omit(analysis)
+> # analysis <- na.omit(analysis)
 > 
 > # save to RData ---- 
 > save(list = "analysis", file = "../RData/analysis.RData")
 > 
 > proc.time()
    user  system elapsed 
-   1.06    0.35    1.75 
+   2.75    0.34    4.73 
