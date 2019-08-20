@@ -1,5 +1,5 @@
 
-R version 3.6.0 (2019-04-26) -- "Planting of a Tree"
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
 Copyright (C) 2019 The R Foundation for Statistical Computing
 Platform: x86_64-w64-mingw32/x64 (64-bit)
 
@@ -18,25 +18,24 @@ Type 'demo()' for some demos, 'help()' for on-line help, or
 Type 'q()' to quit R.
 
 > # R command for batch: 
-> # "C:\Program Files\R\R-3.6.0\bin\R.exe" CMD BATCH --vanilla R\3-main.R
+> # "C:\Program Files\R\R-3.6.1\bin\R.exe" CMD BATCH --vanilla R\3-main.R
 > 
 > 
 > library(tidyverse)
--- [1mAttaching packages[22m ---------------------------------------------------------------------- tidyverse 1.2.1 --
+-- [1mAttaching packages[22m ---------------------------------------------------------------- tidyverse 1.2.1 --
 [32mv[39m [34mggplot2[39m 3.2.0     [32mv[39m [34mpurrr  [39m 0.3.2
 [32mv[39m [34mtibble [39m 2.1.3     [32mv[39m [34mdplyr  [39m 0.8.1
 [32mv[39m [34mtidyr  [39m 0.8.3     [32mv[39m [34mstringr[39m 1.4.0
 [32mv[39m [34mreadr  [39m 1.3.1     [32mv[39m [34mforcats[39m 0.4.0
--- [1mConflicts[22m ------------------------------------------------------------------------- tidyverse_conflicts() --
+-- [1mConflicts[22m ------------------------------------------------------------------- tidyverse_conflicts() --
 [31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
 [31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
 > library(xtable)
-Warning message:
-package 'xtable' was built under R version 3.6.1 
 > source("R/functions.R")
 > 
 > # --- global variables dictating output and cohort --- #
 > output_dir <- "all"
+> cohort <- "all"
 > # ---------------------------------------------------- #
 > 
 > set.seed(123)
@@ -48,33 +47,41 @@ package 'xtable' was built under R version 3.6.1
 +   rename("ltne" = "tne_nmolperml_bsl")
 > 
 > 
-> # outcomes that will be used throughout analysis.
-> outcomes <- c("total_cpd", "cesd")
+> # validation ----
 > 
-> # training data is CENIC-P2
-> train <- analysis %>% filter(study == "P2")
-> trt   <- as.logical(train$trt) # treatment indicator, only for P2!
+> # drop week 20 and non-baseline variables
+> 
+> vars_to_drop <- c("total_cpd_20", "study_cpd", "cesd", "cesd_20", "tne_20", "co_20", "study_cpd", "study_cpd")
+> train <- analysis[, -match(vars_to_drop, names(analysis), NULL)]
+> 
+> test <- train %>% filter(study == "P1S1")
+> train <- train %>% filter(study == "P2")
 > 
 > 
-> # matrix of predictors, outcomes.
-> # drop variables that will not be used as predictors or as outcomes
-> vars_to_drop <- c("id", "study_cpd", "study", "trt", "teh_control")
-> Ytrain <- train %>% select(outcomes)
-> Xtrain <- train %>% select(-outcomes, -vars_to_drop)
+> # treatment indicators
+> trt_train <- as.logical(train$trt)
+> trt_test  <- as.logical(test$trt)
+> 
+> # predictor matrices and outcome 
+> Ytrain <- train$total_cpd
+> Ytest  <- test$total_cpd
+> 
+> vars_to_drop <- c("id", "study", "trt", "total_cpd")
+> Xtrain <- train %>% select(-vars_to_drop)
+> Xtest  <- test  %>% select(-vars_to_drop)
+> 
 > Xtrain <- model.matrix(~ 0 + ., Xtrain)
+> Xtest  <- model.matrix(~ 0 + ., Xtest)
 > 
 > 
 > # debug(estimate_trt_diff)
 > 
-> # loop over outcomes, get estimated treatment effects
-> trt_diffs_list <- list()
-> for (outcome in outcomes) {
-+   trt_diffs_list[[outcome]] <- estimate_trt_diff(X = Xtrain,
-+     X0 = Xtrain[!trt, ], 
-+     X1 = Xtrain[trt, ], 
-+     Y0 = Ytrain[, outcome, drop = TRUE][!trt],
-+     Y1 = Ytrain[, outcome, drop = TRUE][trt])
-+ }
+> # ~ estimated treatment effects ----
+> tdiffs_train <- estimate_trt_diff(X = Xtrain,
++   X0 = Xtrain[!trt_train, ], 
++   X1 = Xtrain[trt_train, ], 
++   Y0 = Ytrain[!trt_train],
++   Y1 = Ytrain[trt_train])
 Loading required package: glmnet
 Loading required package: Matrix
 
@@ -94,19 +101,468 @@ The following objects are masked from 'package:purrr':
 
 Loaded glmnet 2.0-18
 
-Warning message:
-package 'glmnet' was built under R version 3.6.1 
+> 
+> tdiffs_test <- estimate_trt_diff(X = Xtest,
++   X0 = Xtest[!trt_test, ], 
++   X1 = Xtest[trt_test, ], 
++   Y0 = Ytest[!trt_test],
++   Y1 = Ytest[trt_test])
+> 
+> # create matrix with estimated treatment effects
+> trt_diffs_train <- tdiffs_train$trt_diff
+> trt_diffs_test  <- tdiffs_test$trt_diff
+> 
+> # ~ regression tree ----
+> tree <- rtree(Xtrain, trt_diffs_train, maxdepth = 5, minbucket = 8)
+Loading required package: rpart
+> 
+> # ~ test group means ----
+> 
+> # from tree
+> pred_test <- predict(tree, as.data.frame(Xtest))
+> pred_node <- match(pred_test, tree$frame$yval)
+> 
+> means_by_tree  <- tapply(pred_test,      pred_node, mean)
+> means_by_group <- tapply(trt_diffs_test, pred_node, mean)
+> 
+> # ~ plots ----
+> 
+> 
+> # ~~ treatment effects ----
+> 
+> pdf(sprintf("plots/%s/validation-trt-diff-histograms.pdf", output_dir),
++   height = 5,
++   width = 10)
+> par(mfrow = c(1, 2))
+> hist(trt_diffs_train, prob = TRUE,
++   main = "CENIC-P2",
++   xlab = "Estimated Treatment Effects")
+> hist(trt_diffs_test, prob = TRUE,
++   main = "CENIC-P1S1",
++   xlab = "Estimated Treatment Effects")
+> dev.off()
+null device 
+          1 
+> 
+> # ~~ comparing means ----
+> 
+> cols = c("steelblue2", "seagreen3")
+> pdf(sprintf("plots/%s/validation-means-plot.pdf", output_dir),
++   height = 5,
++   width = 10)
+> plot(means_by_tree ~ seq_along(unique(pred_node)),
++   pch = 16,
++   xlab = "Terminal Node",
++   ylab = "Treatment Effect",
++   ylim = range(means_by_group, means_by_tree),
++   col = cols[1])
+> points(means_by_group ~ seq_along(unique(pred_node)),
++   pch = 16,
++   col = cols[2])
+> legend("topleft",
++   bty = "n",
++   pch = 16,
++   col = cols,
++   legend = c("Predicted Mean", "Observed Means"))
+> dev.off()
+null device 
+          1 
+> 
+> pdf(sprintf("plots/%s/validation-scatter-plot.pdf", output_dir))
+> plot(means_by_tree ~ means_by_group,
++   pch = 16,
++   xlab = "Observed Means",
++   ylab = "Predicted Means")
+> legend("topleft",
++   legend = sprintf("r = %.3f", cor(means_by_group, means_by_tree)),
++   bty = "n")
+> dev.off()
+null device 
+          1 
+> 
+> 
+> # ~ tables ----
+> 
+> # ~~ lasso coefficients ----
+> con_coefs <- lapply(list(tdiffs_train, tdiffs_test), '[[', 'm0')
+> con_coefs <- lapply(con_coefs, coef)
+> con_coefs <- do.call(cbind, con_coefs)
+> 
+> trt_coefs <- lapply(list(tdiffs_train, tdiffs_test), '[[', 'm1')
+> trt_coefs <- lapply(trt_coefs, coef)
+> trt_coefs <- do.call(cbind, trt_coefs)
+> 
+> coefs <- rbind(con_coefs, trt_coefs)
+> coefs <- as.matrix(coefs)
+> 
+> rownames(coefs) <- paste0(rep(c("con", "trt"), each = nrow(con_coefs)), " & ",
++   rownames(coefs))
+> 
+> # keep rows with at least 1 non-zero coefficient:
+> coefs <- coefs[rowSums(coefs) > 0, ]
+> 
+> # format for printing
+> colnames(coefs) <- c("Train", "Test")
+> 
+> coefs  <- as.data.frame(coefs)
+> 
+> coefs[] <- lapply(coefs, function(x) sprintf("%.2f", x))
+> coefs[] <- lapply(coefs, function(x) gsub("0.00", "-", x))
+> 
+> write.table(coefs,
++   file      = sprintf("tables/%s/validation-lasso-coefs.txt", output_dir),
++   sep       = " & ",
++   quote     = FALSE)
+> 
+> # ~ trt heterogeneity ----
+> 
+> 
+> # main analysis ----
+> 
+> # drop week 6/8 outcomes
+> to_drop <- c("tne_20", "study_cpd", "total_cpd", "cesd")
+> analysis[, to_drop] <- NULL
+> 
+> # outcomes that will be used throughout analysis.
+> outcomes <- c("total_cpd_20", "cesd_20", "co_20")
+> 
+> # training data is CENIC-P2
+> train <- analysis %>% filter(study == "P2")
+> trt   <- as.logical(train$trt) # treatment indicator, only for P2!
+> 
+> 
+> # matrix of predictors, outcomes.
+> # drop variables that will not be used as predictors or as outcomes
+> vars_to_drop <- c("id", "study", "trt")
+> Ytrain <- train %>% select(outcomes)
+> Xtrain <- train %>% select(-outcomes, -vars_to_drop)
+> Xtrain <- model.matrix(~ 0 + ., Xtrain)
+> 
+> 
+> # debug(estimate_trt_diff)
+> 
+> # loop over outcomes, get estimated treatment effects
+> trt_diffs_list <- list()
+> for (outcome in outcomes) {
++   trt_diffs_list[[outcome]] <- estimate_trt_diff(X = Xtrain,
++     X0 = Xtrain[!trt, ], 
++     X1 = Xtrain[trt, ], 
++     Y0 = Ytrain[, outcome, drop = TRUE][!trt],
++     Y1 = Ytrain[, outcome, drop = TRUE][trt])
++ }
 > 
 > # create matrix with estimated treatment effects
 > trt_diffs <- sapply(trt_diffs_list, '[[', "trt_diff")
 > trt_diffs <- as_tibble(trt_diffs)
 > 
+> # cross validation for tree depth ----
+> depths <- 1:8
+> mse <- array(dim = c(length(depths), length(outcomes)),
++   dimnames = list(depth = depths, outcome = outcomes))
+> 
+> k <- 10 # number of folds
+> folds <- rep(seq_len(k), length.out = nrow(Xtrain))
+> folds <- sample(folds)
+> 
+> # loop over outcomes
+> for (outcome in outcomes) {
++   # loop over depth
++   for (depth in depths) {
++     e <- numeric(nrow(Xtrain))
++     # loop over folds
++     for(fold in seq_len(k)) {
++       message(outcome, ", ", depth, ", ", fold)
++       train_tree <- rtree(Xtrain[folds != fold, ], 
++         trt_diffs[folds != fold, outcome, drop = TRUE], 
++         maxdepth = depth,
++         minbucket = 8)
++       yhat <- unname(predict(train_tree, 
++         newdata = as.data.frame(Xtrain[folds == fold, ])))
++       y <- trt_diffs[folds == fold, outcome, drop = TRUE]
++       e[folds == fold] <- y - yhat
++     }
++     mse[depth, outcome] <- mean(e ^ 2)
++   }
++ }
+total_cpd_20, 1, 1
+total_cpd_20, 1, 2
+total_cpd_20, 1, 3
+total_cpd_20, 1, 4
+total_cpd_20, 1, 5
+total_cpd_20, 1, 6
+total_cpd_20, 1, 7
+total_cpd_20, 1, 8
+total_cpd_20, 1, 9
+total_cpd_20, 1, 10
+total_cpd_20, 2, 1
+total_cpd_20, 2, 2
+total_cpd_20, 2, 3
+total_cpd_20, 2, 4
+total_cpd_20, 2, 5
+total_cpd_20, 2, 6
+total_cpd_20, 2, 7
+total_cpd_20, 2, 8
+total_cpd_20, 2, 9
+total_cpd_20, 2, 10
+total_cpd_20, 3, 1
+total_cpd_20, 3, 2
+total_cpd_20, 3, 3
+total_cpd_20, 3, 4
+total_cpd_20, 3, 5
+total_cpd_20, 3, 6
+total_cpd_20, 3, 7
+total_cpd_20, 3, 8
+total_cpd_20, 3, 9
+total_cpd_20, 3, 10
+total_cpd_20, 4, 1
+total_cpd_20, 4, 2
+total_cpd_20, 4, 3
+total_cpd_20, 4, 4
+total_cpd_20, 4, 5
+total_cpd_20, 4, 6
+total_cpd_20, 4, 7
+total_cpd_20, 4, 8
+total_cpd_20, 4, 9
+total_cpd_20, 4, 10
+total_cpd_20, 5, 1
+total_cpd_20, 5, 2
+total_cpd_20, 5, 3
+total_cpd_20, 5, 4
+total_cpd_20, 5, 5
+total_cpd_20, 5, 6
+total_cpd_20, 5, 7
+total_cpd_20, 5, 8
+total_cpd_20, 5, 9
+total_cpd_20, 5, 10
+total_cpd_20, 6, 1
+total_cpd_20, 6, 2
+total_cpd_20, 6, 3
+total_cpd_20, 6, 4
+total_cpd_20, 6, 5
+total_cpd_20, 6, 6
+total_cpd_20, 6, 7
+total_cpd_20, 6, 8
+total_cpd_20, 6, 9
+total_cpd_20, 6, 10
+total_cpd_20, 7, 1
+total_cpd_20, 7, 2
+total_cpd_20, 7, 3
+total_cpd_20, 7, 4
+total_cpd_20, 7, 5
+total_cpd_20, 7, 6
+total_cpd_20, 7, 7
+total_cpd_20, 7, 8
+total_cpd_20, 7, 9
+total_cpd_20, 7, 10
+total_cpd_20, 8, 1
+total_cpd_20, 8, 2
+total_cpd_20, 8, 3
+total_cpd_20, 8, 4
+total_cpd_20, 8, 5
+total_cpd_20, 8, 6
+total_cpd_20, 8, 7
+total_cpd_20, 8, 8
+total_cpd_20, 8, 9
+total_cpd_20, 8, 10
+cesd_20, 1, 1
+cesd_20, 1, 2
+cesd_20, 1, 3
+cesd_20, 1, 4
+cesd_20, 1, 5
+cesd_20, 1, 6
+cesd_20, 1, 7
+cesd_20, 1, 8
+cesd_20, 1, 9
+cesd_20, 1, 10
+cesd_20, 2, 1
+cesd_20, 2, 2
+cesd_20, 2, 3
+cesd_20, 2, 4
+cesd_20, 2, 5
+cesd_20, 2, 6
+cesd_20, 2, 7
+cesd_20, 2, 8
+cesd_20, 2, 9
+cesd_20, 2, 10
+cesd_20, 3, 1
+cesd_20, 3, 2
+cesd_20, 3, 3
+cesd_20, 3, 4
+cesd_20, 3, 5
+cesd_20, 3, 6
+cesd_20, 3, 7
+cesd_20, 3, 8
+cesd_20, 3, 9
+cesd_20, 3, 10
+cesd_20, 4, 1
+cesd_20, 4, 2
+cesd_20, 4, 3
+cesd_20, 4, 4
+cesd_20, 4, 5
+cesd_20, 4, 6
+cesd_20, 4, 7
+cesd_20, 4, 8
+cesd_20, 4, 9
+cesd_20, 4, 10
+cesd_20, 5, 1
+cesd_20, 5, 2
+cesd_20, 5, 3
+cesd_20, 5, 4
+cesd_20, 5, 5
+cesd_20, 5, 6
+cesd_20, 5, 7
+cesd_20, 5, 8
+cesd_20, 5, 9
+cesd_20, 5, 10
+cesd_20, 6, 1
+cesd_20, 6, 2
+cesd_20, 6, 3
+cesd_20, 6, 4
+cesd_20, 6, 5
+cesd_20, 6, 6
+cesd_20, 6, 7
+cesd_20, 6, 8
+cesd_20, 6, 9
+cesd_20, 6, 10
+cesd_20, 7, 1
+cesd_20, 7, 2
+cesd_20, 7, 3
+cesd_20, 7, 4
+cesd_20, 7, 5
+cesd_20, 7, 6
+cesd_20, 7, 7
+cesd_20, 7, 8
+cesd_20, 7, 9
+cesd_20, 7, 10
+cesd_20, 8, 1
+cesd_20, 8, 2
+cesd_20, 8, 3
+cesd_20, 8, 4
+cesd_20, 8, 5
+cesd_20, 8, 6
+cesd_20, 8, 7
+cesd_20, 8, 8
+cesd_20, 8, 9
+cesd_20, 8, 10
+co_20, 1, 1
+co_20, 1, 2
+co_20, 1, 3
+co_20, 1, 4
+co_20, 1, 5
+co_20, 1, 6
+co_20, 1, 7
+co_20, 1, 8
+co_20, 1, 9
+co_20, 1, 10
+co_20, 2, 1
+co_20, 2, 2
+co_20, 2, 3
+co_20, 2, 4
+co_20, 2, 5
+co_20, 2, 6
+co_20, 2, 7
+co_20, 2, 8
+co_20, 2, 9
+co_20, 2, 10
+co_20, 3, 1
+co_20, 3, 2
+co_20, 3, 3
+co_20, 3, 4
+co_20, 3, 5
+co_20, 3, 6
+co_20, 3, 7
+co_20, 3, 8
+co_20, 3, 9
+co_20, 3, 10
+co_20, 4, 1
+co_20, 4, 2
+co_20, 4, 3
+co_20, 4, 4
+co_20, 4, 5
+co_20, 4, 6
+co_20, 4, 7
+co_20, 4, 8
+co_20, 4, 9
+co_20, 4, 10
+co_20, 5, 1
+co_20, 5, 2
+co_20, 5, 3
+co_20, 5, 4
+co_20, 5, 5
+co_20, 5, 6
+co_20, 5, 7
+co_20, 5, 8
+co_20, 5, 9
+co_20, 5, 10
+co_20, 6, 1
+co_20, 6, 2
+co_20, 6, 3
+co_20, 6, 4
+co_20, 6, 5
+co_20, 6, 6
+co_20, 6, 7
+co_20, 6, 8
+co_20, 6, 9
+co_20, 6, 10
+co_20, 7, 1
+co_20, 7, 2
+co_20, 7, 3
+co_20, 7, 4
+co_20, 7, 5
+co_20, 7, 6
+co_20, 7, 7
+co_20, 7, 8
+co_20, 7, 9
+co_20, 7, 10
+co_20, 8, 1
+co_20, 8, 2
+co_20, 8, 3
+co_20, 8, 4
+co_20, 8, 5
+co_20, 8, 6
+co_20, 8, 7
+co_20, 8, 8
+co_20, 8, 9
+co_20, 8, 10
+> 
+> apply(mse, 2, which.min)
+total_cpd_20      cesd_20        co_20 
+           4            6            6 
+> 
+> # cv mse plot ----
+> cols <- c("steelblue2", "seagreen3", "gold")
+> pdf(sprintf("plots/%s/cv-mse.pdf", output_dir))
+> plot(mse[, 1] ~ depths,
++   ylim = range(mse),
++   pch = 15,
++   col = cols[1],
++   ylab = "MSE",
++   xlab = "Maximum Tree Depth",
++   main = "Cross Validation Error")
+> points(mse[, 2] ~ depths, 
++   col = cols[2],
++   pch = 16)
+> points(mse[, 3] ~ depths, 
++   col = cols[3],
++   pch = 17)
+> for(i in 1:3)
++   lines(mse[, i] ~ depths, col = cols[i])
+> legend("topright",
++   legend = outcomes,
++   lty = 1,
++   col = cols,
++   pch = 15:17,
++   bty = "n")
+> dev.off()
+null device 
+          1 
+> 
 > # create the tree for each column in treat_diffs
 > # debug(rtree)
 > tree_list <- list()
 > for (outcome in outcomes)
-+   tree_list[[outcome]] <- rtree(Xtrain, trt_diffs[, outcome, drop = TRUE])  
-Loading required package: rpart
++   tree_list[[outcome]] <- rtree(Xtrain, trt_diffs[, outcome, drop = TRUE],
++     maxdepth = which.min(mse[, outcome]), minbucket = 8)  
 > 
 > # fitted treat diffs
 > fitted_trt_diffs <- sapply(tree_list, predict)
@@ -151,20 +607,20 @@ Loading required package: rpart
 > # compute means within each where group.
 > trt_diffs_w_where <- bind_cols(trt_diffs, where_tib)
 > trt_diffs_w_where
-[90m# A tibble: 591 x 4[39m
-   total_cpd    cesd where_total_cpd where_cesd
-       [3m[90m<dbl>[39m[23m   [3m[90m<dbl>[39m[23m           [3m[90m<int>[39m[23m      [3m[90m<int>[39m[23m
-[90m 1[39m      5.74  0.043[4m5[24m              17         17
-[90m 2[39m      3.61 -[31m1[39m[31m.[39m[31m38[39m                17         15
-[90m 3[39m      2.57 -[31m1[39m[31m.[39m[31m0[39m[31m2[39m                10         17
-[90m 4[39m     -[31m2[39m[31m.[39m[31m78[39m  0.689                4         17
-[90m 5[39m      5.36 -[31m3[39m[31m.[39m[31m83[39m                15         15
-[90m 6[39m      7.45 -[31m0[39m[31m.[39m[31m0[39m[31m86[4m5[24m[39m              20         17
-[90m 7[39m      4.09  2.16                15         22
-[90m 8[39m      2.92  1.58                 9         17
-[90m 9[39m      5.28  0.519               10         15
-[90m10[39m      6.36 -[31m1[39m[31m.[39m[31m50[39m                20          9
-[90m# ... with 581 more rows[39m
+[90m# A tibble: 540 x 6[39m
+   total_cpd_20 cesd_20  co_20 where_total_cpd_20 where_cesd_20 where_co_20
+          [3m[90m<dbl>[39m[23m   [3m[90m<dbl>[39m[23m  [3m[90m<dbl>[39m[23m              [3m[90m<int>[39m[23m         [3m[90m<int>[39m[23m       [3m[90m<int>[39m[23m
+[90m 1[39m        5.86    0.292  8.87                   6            18          22
+[90m 2[39m        5.99   -[31m1[39m[31m.[39m[31m98[39m  -[31m0[39m[31m.[39m[31m730[39m                 13            14          11
+[90m 3[39m        7.09   -[31m0[39m[31m.[39m[31m874[39m 15.2                    6            18          25
+[90m 4[39m       -[31m0[39m[31m.[39m[31m313[39m   1.13   2.01                   7            19           8
+[90m 5[39m        7.82   -[31m3[39m[31m.[39m[31m78[39m  15.9                   17            14          25
+[90m 6[39m       12.3     0.874  9.49                  20            19           9
+[90m 7[39m        4.66    0.776  3.31                  13            23          18
+[90m 8[39m        8.05    0.921  5.70                  19            20          13
+[90m 9[39m       10.1    -[31m1[39m[31m.[39m[31m77[39m   9.61                  19            14          19
+[90m10[39m        8.63   -[31m0[39m[31m.[39m[31m397[39m 12.1                   20             9          22
+[90m# ... with 530 more rows[39m
 > 
 > fitted_means <- list()
 > 
@@ -238,6 +694,17 @@ Loading required package: rpart
 > # plots ----
 > 
 > # ~ histograms ----
+> title_names <- c("Total CPD", "CESD", "CO")
+> pdf(sprintf("plots/%s/trt-diff-histograms.pdf", output_dir))
+> par(mfrow = c(2, 2))
+> for(outcome in outcomes) {
++   hist(trt_diffs[, outcome, drop = TRUE],
++     main = title_names[match(outcome, outcomes)],
++     xlab = title_names[match(outcome, outcomes)])
++ }
+> dev.off()
+null device 
+          1 
 > 
 > # ~ trees ----
 > for(outcome in outcomes) {
@@ -246,9 +713,10 @@ Loading required package: rpart
 +   dev.off()
 + }
 Loading required package: rpart.plot
-Warning message:
-package 'rpart.plot' was built under R version 3.6.1 
+> 
+> 
+> 
 > 
 > proc.time()
    user  system elapsed 
-   4.17    0.35    5.00 
+  16.93    0.98   22.78 

@@ -155,5 +155,8 @@ analysis$gender <- factor(analysis$gender, labels = c("male", "female"))
 
 # analysis <- na.omit(analysis)
 
+# drop redundant teh_control variable
+analysis[, "teh_control"] <- NULL
+
 # save to RData ---- 
 save(list = "analysis", file = "../RData/analysis.RData")
