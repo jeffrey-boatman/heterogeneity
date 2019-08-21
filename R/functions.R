@@ -49,11 +49,15 @@ split_fun <- function(x, labs, digits, varlen, faclen) {
      "ftnd_wo_ ",    "FTND (No CPD)",
      "mnws_bsl",     "MNWS",
      "age",          "Age",
-     "ltne_nmo",     "TNE",
+     #"ltne_nmo",     "TNE",
      "qsu_f1_b",     "QSU Factor 1",
-     "co_bsl",       "CO",
-     "cesd_bsl",     "CESD",
-     "wisdm_se",     "WISDM Social/Environmental Goads"
+     "co_bsl",       "Baseline CO",
+     "cesd_bsl",     "Baseline CESD",
+     "wisdm_se",     "WISDM Social/Environmental Goads",
+     "cpd_bsl",      "Baseline CPD",
+     "ltne",         "Baseline log TNE",
+     "ces_enjo",     "CES Enjoyment",
+     "genderma = 0", "Male = 0"
   )
   olds <- ll$old
   news <- ll$new

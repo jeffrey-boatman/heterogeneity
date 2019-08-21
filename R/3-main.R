@@ -43,11 +43,14 @@ vars_to_drop <- c("id", "study", "trt", "total_cpd")
 Xtrain <- train %>% select(-vars_to_drop)
 Xtest  <- test  %>% select(-vars_to_drop)
 
+# cbind(names(Xtrain))
+# cbind(names(Xtest))
+
 Xtrain <- model.matrix(~ 0 + ., Xtrain)
 Xtest  <- model.matrix(~ 0 + ., Xtest)
 
 
-# debug(estimate_trt_diff)
+# debugonce(estimate_trt_diff)
 
 # ~ estimated treatment effects ----
 tdiffs_train <- estimate_trt_diff(X = Xtrain,
@@ -62,20 +65,28 @@ tdiffs_test <- estimate_trt_diff(X = Xtest,
   Y0 = Ytest[!trt_test],
   Y1 = Ytest[trt_test])
 
-# create matrix with estimated treatment effects
+#  estimated treatment effects
 trt_diffs_train <- tdiffs_train$trt_diff
 trt_diffs_test  <- tdiffs_test$trt_diff
 
 # ~ regression tree ----
+
+# debugonce(rtree)
 tree <- rtree(Xtrain, trt_diffs_train, maxdepth = 5, minbucket = 8)
 
 # ~ test group means ----
 
-# from tree
+# predicted means from tree
+
+if (unique(length(tree$frame$yval)) < length(tree$frame$yval))
+  stop("yval doesn't contain unique values. Use of 'match' is invalid")
+
 pred_test <- predict(tree, as.data.frame(Xtest))
 pred_node <- match(pred_test, tree$frame$yval)
 
-means_by_tree  <- tapply(pred_test,      pred_node, mean)
+means_by_tree  <- tapply(pred_test, pred_node, mean)
+
+# observed means using tree covariate partition
 means_by_group <- tapply(trt_diffs_test, pred_node, mean)
 
 # ~ plots ----
@@ -98,9 +109,7 @@ dev.off()
 # ~~ comparing means ----
 
 cols = c("steelblue2", "seagreen3")
-pdf(sprintf("plots/%s/validation-means-plot.pdf", output_dir),
-  height = 5,
-  width = 10)
+pdf(sprintf("plots/%s/validation-means-plot.pdf", output_dir))
 plot(means_by_tree ~ seq_along(unique(pred_node)),
   pch = 16,
   xlab = "Terminal Node",
@@ -118,10 +127,10 @@ legend("topleft",
 dev.off()
 
 pdf(sprintf("plots/%s/validation-scatter-plot.pdf", output_dir))
-plot(means_by_tree ~ means_by_group,
+plot(means_by_group ~ means_by_tree,
   pch = 16,
-  xlab = "Observed Means",
-  ylab = "Predicted Means")
+  ylab = "Observed Means",
+  xlab = "Predicted Means")
 legend("topleft",
   legend = sprintf("r = %.3f", cor(means_by_group, means_by_tree)),
   bty = "n")
@@ -166,15 +175,18 @@ write.table(coefs,
 
 # main analysis ----
 
-# drop week 6/8 outcomes
-to_drop <- c("tne_20", "study_cpd", "total_cpd", "cesd")
-analysis[, to_drop] <- NULL
+set.seed(123)
+
+# drop week 6/8 outcomes and any other unnecessaries
+to_drop <- c("tne_20", "study_cpd", "total_cpd", "cesd") 
+train <- analysis
+train[, to_drop] <- NULL
 
 # outcomes that will be used throughout analysis.
 outcomes <- c("total_cpd_20", "cesd_20", "co_20")
 
 # training data is CENIC-P2
-train <- analysis %>% filter(study == "P2")
+train <- train %>% filter(study == "P2")
 trt   <- as.logical(train$trt) # treatment indicator, only for P2!
 
 
@@ -185,10 +197,11 @@ Ytrain <- train %>% select(outcomes)
 Xtrain <- train %>% select(-outcomes, -vars_to_drop)
 Xtrain <- model.matrix(~ 0 + ., Xtrain)
 
+# cbind(colnames(Xtrain))
 
 # debug(estimate_trt_diff)
 
-# loop over outcomes, get estimated treatment effects
+# ~ treatment effects ----
 trt_diffs_list <- list()
 for (outcome in outcomes) {
   trt_diffs_list[[outcome]] <- estimate_trt_diff(X = Xtrain,
@@ -201,6 +214,40 @@ for (outcome in outcomes) {
 # create matrix with estimated treatment effects
 trt_diffs <- sapply(trt_diffs_list, '[[', "trt_diff")
 trt_diffs <- as_tibble(trt_diffs)
+
+
+# ~ permutation tests ----
+n_perm <- 1000
+n <- nrow(Xtrain)
+stddevs <- array(dim = c(n_perm, length(outcomes)),
+  dimnames = list(permutation = seq_len(n_perm), outcome = outcomes))
+
+for(outcome in outcomes) {
+  y_perm <- Ytrain[, outcome, drop = TRUE]
+  y_perm[trt] <-  y_perm[trt] - (mean(y_perm[trt]) - mean(y_perm[!trt]))
+  for(ii in seq_len(n_perm)) {
+    index <- seq_len(n)
+    index <- sample(index)
+    trt_perm <- trt[index]
+    trt_diff_perm <- estimate_trt_diff(X = Xtrain,
+      X0 = Xtrain[!trt_perm, ], 
+      X1 = Xtrain[trt_perm, ], 
+      Y0 = y_perm[!trt_perm],
+      Y1 = y_perm[trt_perm])
+    stddevs[ii, outcome] <- sd(trt_diff_perm$trt_diff)
+    if(ii %% 100 == 0)
+      message(outcome, ": ", ii)
+  }
+}
+
+# pvals:
+pvals <- list()
+for(outcome in outcomes)
+  pvals[[outcome]] <- mean(stddevs[, outcome] > sd(trt_diffs[, outcome, drop = TRUE]))
+pvals <- do.call(c, pvals)
+
+pvals
+
 
 # ~ cross validation for tree depth ----
 depths <- 1:8
@@ -232,10 +279,16 @@ for (outcome in outcomes) {
   }
 }
 
-apply(mse, 2, which.min)
+mins <- apply(mse, 2, which.min)
+cat("Max tree depth giving minimum MSE: \n")
+for(i in seq_along(outcomes))
+  cat(outcomes[i], ":", mins[i], "\n")
+
+
 
 # ~ cv mse plot ----
 cols <- c("steelblue2", "seagreen3", "gold")
+title_names <- c("Total CPD", "CESD", "CO")
 pdf(sprintf("plots/%s/cv-mse.pdf", output_dir))
 plot(mse[, 1] ~ depths,
   ylim = range(mse),
@@ -243,17 +296,20 @@ plot(mse[, 1] ~ depths,
   col = cols[1],
   ylab = "MSE",
   xlab = "Maximum Tree Depth",
-  main = "Cross Validation Error")
+  main = "Cross Validation Error",
+  cex = 1.5)
 points(mse[, 2] ~ depths, 
   col = cols[2],
-  pch = 16)
+  pch = 16,
+  cex = 1.5)
 points(mse[, 3] ~ depths, 
   col = cols[3],
-  pch = 17)
+  pch = 17,
+  cex = 1.5)
 for(i in 1:3)
-  lines(mse[, i] ~ depths, col = cols[i])
+  lines(mse[, i] ~ depths, col = cols[i], lwd = 2)
 legend("topright",
-  legend = outcomes,
+  legend = title_names,
   lty = 1,
   col = cols,
   pch = 15:17,
@@ -278,16 +334,11 @@ where_tib <- as_tibble(where_tib)
 where_names      <- paste0("where_", names(where_tib))
 names(where_tib) <- where_names
 
-# now we want to compute means within terminal nodes based
-# on tree built for other outcomes. To do this, we only need to
-# know which observations belong to the same terminal node.
-# Then we can compute means within these groups. To do this,
-# use the 'where' matrix to compute fitted values. To check that
-# this works, test it by using the method to compute values
-# on the original outcome. These should match the predicted
-# values obtainred from the tree predict function.
-# make sure this passes before proceeding. 
-
+# check to make sure that we can get fitted values within
+# each terminal node by computing means within each value
+# of the 'where' vector. (The where vector is used by the
+# rpart package to determine node membership.) This code
+# checks to make sure that we get the correct answer.
 check <- list()
 
 for (outcome in outcomes) {
@@ -393,6 +444,9 @@ for(outcome in outcomes) {
 dev.off()
 
 # ~~ trees ----
+
+# debug(split_fun)
+
 for(outcome in outcomes) {
   pdf(sprintf("plots/%s/tree-%s.pdf", output_dir, outcome))
   plot_tree(tree_list[[outcome]])
