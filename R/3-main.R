@@ -89,6 +89,9 @@ means_by_tree  <- tapply(pred_test, pred_node, mean)
 # observed means using tree covariate partition
 means_by_group <- tapply(trt_diffs_test, pred_node, mean)
 
+if (!all(names(means_by_group) == names(means_by_tree)))
+  stop("check sorting of means in means_by_group and means_by_tree")
+
 # ~ plots ----
 
 
@@ -110,13 +113,13 @@ dev.off()
 
 cols = c("steelblue2", "seagreen3")
 pdf(sprintf("plots/%s/validation-means-plot.pdf", output_dir))
-plot(means_by_tree ~ seq_along(unique(pred_node)),
+plot(means_by_tree ~ seq_along(sort(unique(pred_node))),
   pch = 16,
   xlab = "Terminal Node",
   ylab = "Treatment Effect",
   ylim = range(means_by_group, means_by_tree),
   col = cols[1])
-points(means_by_group ~ seq_along(unique(pred_node)),
+points(means_by_group ~ seq_along(sort(unique(pred_node))),
   pch = 16,
   col = cols[2])
 legend("topleft",
