@@ -120,11 +120,11 @@ plot(means_by_tree ~ seq_along(sort(unique(pred_node))),
   ylim = range(means_by_group, means_by_tree),
   col = cols[1])
 points(means_by_group ~ seq_along(sort(unique(pred_node))),
-  pch = 16,
+  pch = 17,
   col = cols[2])
 legend("topleft",
   bty = "n",
-  pch = 16,
+  pch = c(16, 17),
   col = cols,
   legend = c("Predicted Mean", "Observed Means"))
 dev.off()
