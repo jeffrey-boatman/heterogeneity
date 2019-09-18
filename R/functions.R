@@ -1,34 +1,65 @@
-estimate_trt_diff <- function(X, X0, X1, Y0, Y1){
-  require(glmnet)
+estimate_trt_diff <- function(X, X0, X1, Y0, Y1, 
+  estimation = c("lasso", "random_forest")) {
   
-  m0 <- cv.glmnet(x = X0, 
-    y           = Y0, 
-    family      = "gaussian", 
-    alpha       = 1, 
-    standardize = TRUE)
-  m1 <- cv.glmnet(x = X1, 
-    y           = Y1, 
-    family      = "gaussian", 
-    alpha       = 1, 
-    standardize = TRUE)
-  p0 <- c(predict(m0, newx = X, s = "lambda.min"))
-  p1 <- c(predict(m1, newx = X, s = "lambda.min"))
-  trt_diff <- p0 - p1
+  estimation <- match.arg(estimation)
+  
+  if (estimation == "lasso") {
+    require(glmnet)
 
-  out <- list()
-  
-  out$m0       <- m0
-  out$m1       <- m1
-  out$trt_diff <- trt_diff
+    m0 <- cv.glmnet(x = X0,
+      y           = Y0,
+      family      = "gaussian",
+      alpha       = 1,
+      standardize = TRUE)
+    m1 <- cv.glmnet(x = X1,
+      y           = Y1,
+      family      = "gaussian",
+      alpha       = 1,
+      standardize = TRUE)
+    p0 <- c(predict(m0, newx = X, s = "lambda.min"))
+    p1 <- c(predict(m1, newx = X, s = "lambda.min"))
+    trt_diff <- p0 - p1
+
+    nonzero_x0 <- rownames(coef(m0))[which(!(coef(m0) == 0))]
+    nonzero_x1 <- rownames(coef(m1))[which(!(coef(m1) == 0))]
+
+    nonzero_x0 <- setdiff(nonzero_x0, "(Intercept)")
+    nonzero_x1 <- setdiff(nonzero_x1, "(Intercept)")
+
+    out <- list()
+
+    out$m0       <- m0
+    out$m1       <- m1
+    out$trt_diff <- trt_diff
+    out$nonzero_x0 <- nonzero_x0
+    out$nonzero_x1 <- nonzero_x1
+  } else if (estimation == "random_forest") {
+
+    require(randomForest)
+
+    m0 <- randomForest(x = X0, y = Y0)
+    m1 <- randomForest(x = X1, y = Y1)
+    p0 <- c(predict(m0, newdata = as.data.frame(X)))
+    p1 <- c(predict(m1, newdata = as.data.frame(X)))
+    trt_diff <- p0 - p1
+
+    out <- list()
+
+    out$m0       <- m0
+    out$m1       <- m1
+    out$trt_diff <- trt_diff
+
+  }
+
   out
 }
 
-rtree <- function(X, Y, maxdepth = 4, minbucket = 2){
+rtree <- function(X, Y, maxdepth = 4, minbucket = 2, cp = 0.01){
   require(rpart)
   data  <- as.data.frame(cbind(Y, X))
   fit <- rpart(Y ~ ., dat = data, 
     method  = "anova", 
-    control = rpart.control(maxdepth = maxdepth, minbucket = minbucket), 
+    control = rpart.control(maxdepth = maxdepth, minbucket = minbucket, cp = cp), 
     model   = TRUE)
   fit
 }
@@ -57,7 +88,8 @@ split_fun <- function(x, labs, digits, varlen, faclen) {
      "cpd_bsl",      "Baseline CPD",
      "ltne",         "Baseline log TNE",
      "ces_enjo",     "CES Enjoyment",
-     "genderma = 0", "Male = 0"
+     "genderma = 0", "Male = 0",
+     "genderfe = 1", "Female = 1"
   )
   olds <- ll$old
   news <- ll$new

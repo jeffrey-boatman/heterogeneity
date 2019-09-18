@@ -6,10 +6,12 @@ library(tidyverse)
 library(xtable)
 source("R/functions.R")
 
-# --- global variables dictating output and cohort --- #
-output_dir <- "all"
-cohort <- "all"
-# ---------------------------------------------------- #
+# --- global variables --- #
+estimation <- "lasso"
+# estimation <- "random_forest"
+cohort <- "ITT" # use all participants, or compliant ones?
+# cohort <- "compliant"
+# ------------------------ #
 
 set.seed(123)
 
@@ -19,166 +21,13 @@ analysis <- analysis %>%
   mutate(tne_nmolperml_bsl = log(tne_nmolperml_bsl)) %>%
   rename("ltne" = "tne_nmolperml_bsl")
 
-
-# validation ----
-
-# drop week 20 and non-baseline variables
-
-vars_to_drop <- c("total_cpd_20", "study_cpd", "cesd", "cesd_20", "tne_20", "co_20", "study_cpd", "study_cpd")
-train <- analysis[, -match(vars_to_drop, names(analysis), NULL)]
-
-test <- train %>% filter(study == "P1S1")
-train <- train %>% filter(study == "P2")
+if (cohort == "compliant") {
+  analysis <- analysis %>%
+    filter(trt == 0 | trt == 1 & tne_20 < 6.41)
+}
 
 
-# treatment indicators
-trt_train <- as.logical(train$trt)
-trt_test  <- as.logical(test$trt)
-
-# predictor matrices and outcome 
-Ytrain <- train$total_cpd
-Ytest  <- test$total_cpd
-
-vars_to_drop <- c("id", "study", "trt", "total_cpd")
-Xtrain <- train %>% select(-vars_to_drop)
-Xtest  <- test  %>% select(-vars_to_drop)
-
-# cbind(names(Xtrain))
-# cbind(names(Xtest))
-
-Xtrain <- model.matrix(~ 0 + ., Xtrain)
-Xtest  <- model.matrix(~ 0 + ., Xtest)
-
-
-# debugonce(estimate_trt_diff)
-
-# ~ estimated treatment effects ----
-tdiffs_train <- estimate_trt_diff(X = Xtrain,
-  X0 = Xtrain[!trt_train, ], 
-  X1 = Xtrain[trt_train, ], 
-  Y0 = Ytrain[!trt_train],
-  Y1 = Ytrain[trt_train])
-
-tdiffs_test <- estimate_trt_diff(X = Xtest,
-  X0 = Xtest[!trt_test, ], 
-  X1 = Xtest[trt_test, ], 
-  Y0 = Ytest[!trt_test],
-  Y1 = Ytest[trt_test])
-
-#  estimated treatment effects
-trt_diffs_train <- tdiffs_train$trt_diff
-trt_diffs_test  <- tdiffs_test$trt_diff
-
-# ~ regression tree ----
-
-# debugonce(rtree)
-tree <- rtree(Xtrain, trt_diffs_train, maxdepth = 5, minbucket = 8)
-
-# ~ test group means ----
-
-# predicted means from tree
-
-if (unique(length(tree$frame$yval)) < length(tree$frame$yval))
-  stop("yval doesn't contain unique values. Use of 'match' is invalid")
-
-pred_test <- predict(tree, as.data.frame(Xtest))
-pred_node <- match(pred_test, tree$frame$yval)
-
-means_by_tree  <- tapply(pred_test, pred_node, mean)
-
-# observed means using tree covariate partition
-means_by_group <- tapply(trt_diffs_test, pred_node, mean)
-
-if (!all(names(means_by_group) == names(means_by_tree)))
-  stop("check sorting of means in means_by_group and means_by_tree")
-
-# ~ plots ----
-
-
-# ~~ treatment effects ----
-
-pdf(sprintf("plots/%s/validation-trt-diff-histograms.pdf", output_dir),
-  height = 5,
-  width = 10)
-par(mfrow = c(1, 2))
-hist(trt_diffs_train, prob = TRUE,
-  main = "CENIC-P2",
-  xlab = "Estimated Treatment Effects")
-hist(trt_diffs_test, prob = TRUE,
-  main = "CENIC-P1S1",
-  xlab = "Estimated Treatment Effects")
-dev.off()
-
-# ~~ comparing means ----
-
-cols = c("steelblue2", "seagreen3")
-pdf(sprintf("plots/%s/validation-means-plot.pdf", output_dir))
-plot(means_by_tree ~ seq_along(sort(unique(pred_node))),
-  pch = 16,
-  xlab = "Terminal Node",
-  ylab = "Treatment Effect",
-  ylim = range(means_by_group, means_by_tree),
-  col = cols[1])
-points(means_by_group ~ seq_along(sort(unique(pred_node))),
-  pch = 17,
-  col = cols[2])
-legend("topleft",
-  bty = "n",
-  pch = c(16, 17),
-  col = cols,
-  legend = c("Predicted Mean", "Observed Means"))
-dev.off()
-
-pdf(sprintf("plots/%s/validation-scatter-plot.pdf", output_dir))
-plot(means_by_group ~ means_by_tree,
-  pch = 16,
-  ylab = "Observed Means",
-  xlab = "Predicted Means")
-legend("topleft",
-  legend = sprintf("r = %.3f", cor(means_by_group, means_by_tree)),
-  bty = "n")
-dev.off()
-
-
-# ~ tables ----
-
-# ~~ lasso coefficients ----
-con_coefs <- lapply(list(tdiffs_train, tdiffs_test), '[[', 'm0')
-con_coefs <- lapply(con_coefs, coef)
-con_coefs <- do.call(cbind, con_coefs)
-
-trt_coefs <- lapply(list(tdiffs_train, tdiffs_test), '[[', 'm1')
-trt_coefs <- lapply(trt_coefs, coef)
-trt_coefs <- do.call(cbind, trt_coefs)
-
-coefs <- rbind(con_coefs, trt_coefs)
-coefs <- as.matrix(coefs)
-
-rownames(coefs) <- paste0(rep(c("con", "trt"), each = nrow(con_coefs)), " & ",
-  rownames(coefs))
-
-# keep rows with at least 1 non-zero coefficient:
-coefs <- coefs[rowSums(coefs) > 0, ]
-
-# format for printing
-colnames(coefs) <- c("Train", "Test")
-
-coefs  <- as.data.frame(coefs)
-
-coefs[] <- lapply(coefs, function(x) sprintf("%.2f", x))
-coefs[] <- lapply(coefs, function(x) gsub("0.00", "-", x))
-
-write.table(coefs,
-  file      = sprintf("tables/%s/validation-lasso-coefs.txt", output_dir),
-  sep       = " & ",
-  quote     = FALSE)
-
-# ~ trt heterogeneity ----
-
-
-# main analysis ----
-
-set.seed(123)
+# primary analysis ----
 
 # drop week 6/8 outcomes and any other unnecessaries
 to_drop <- c("tne_20", "study_cpd", "total_cpd", "cesd") 
@@ -198,7 +47,9 @@ trt   <- as.logical(train$trt) # treatment indicator, only for P2!
 vars_to_drop <- c("id", "study", "trt")
 Ytrain <- train %>% select(outcomes)
 Xtrain <- train %>% select(-outcomes, -vars_to_drop)
-Xtrain <- model.matrix(~ 0 + ., Xtrain)
+# Xtrain <- model.matrix(~ 0 + ., Xtrain)
+Xtrain <- model.matrix(~ ., Xtrain)
+Xtrain <- Xtrain[, -1]
 
 # cbind(colnames(Xtrain))
 
@@ -211,7 +62,8 @@ for (outcome in outcomes) {
     X0 = Xtrain[!trt, ], 
     X1 = Xtrain[trt, ], 
     Y0 = Ytrain[, outcome, drop = TRUE][!trt],
-    Y1 = Ytrain[, outcome, drop = TRUE][trt])
+    Y1 = Ytrain[, outcome, drop = TRUE][trt],
+    estimation = estimation)
 }
 
 # create matrix with estimated treatment effects
@@ -236,7 +88,8 @@ for(outcome in outcomes) {
       X0 = Xtrain[!trt_perm, ], 
       X1 = Xtrain[trt_perm, ], 
       Y0 = y_perm[!trt_perm],
-      Y1 = y_perm[trt_perm])
+      Y1 = y_perm[trt_perm],
+      estimation = estimation)
     stddevs[ii, outcome] <- sd(trt_diff_perm$trt_diff)
     if(ii %% 100 == 0)
       message(outcome, ": ", ii)
@@ -253,47 +106,96 @@ pvals
 
 
 # ~ cross validation for tree depth ----
-depths <- 1:8
-mse <- array(dim = c(length(depths), length(outcomes)),
-  dimnames = list(depth = depths, outcome = outcomes))
+set.seed(11350)
+depths <- 0:8
+k <- 5 # number of folds
+n_mc <- 10
+mse <- array(dim = c(length(depths), length(outcomes), n_mc),
+  dimnames = list(depth = depths, outcome = outcomes, 
+    iteration = seq_len(n_mc)))
 
-k <- 10 # number of folds
-folds <- rep(seq_len(k), length.out = nrow(Xtrain))
-folds <- sample(folds)
+# for debugging/updating
+# outcome <- outcomes[1]
+# depth <- 0
+# fold <- 1
+# mc <- 2
 
-# loop over outcomes
-for (outcome in outcomes) {
-  # loop over depth
-  for (depth in depths) {
-    e <- numeric(nrow(Xtrain))
-    # loop over folds
-    for(fold in seq_len(k)) {
-      message(outcome, ", ", depth, ", ", fold)
-      train_tree <- rtree(Xtrain[folds != fold, ], 
-        trt_diffs[folds != fold, outcome, drop = TRUE], 
-        maxdepth = depth,
-        minbucket = 8)
-      yhat <- unname(predict(train_tree, 
-        newdata = as.data.frame(Xtrain[folds == fold, ])))
-      y <- trt_diffs[folds == fold, outcome, drop = TRUE]
-      e[folds == fold] <- y - yhat
+for (mc in seq_len(n_mc)) {
+  folds <- rep(seq_len(k), length.out = nrow(Xtrain))
+  folds <- sample(folds)
+  # loop over outcomes
+  for (outcome in outcomes) {
+    testdata <- as.data.frame(Xtrain)
+    testdata[outcome] <- Ytrain[outcome]
+    # loop over depth
+    for (depth in depths) {
+      e <- numeric(nrow(Xtrain)) # prediction error vector
+      # loop over folds
+      for(fold in seq_len(k)) {
+        msg <- sprintf("mc %i, outcome %s, depth %i, fold %i",
+          mc, outcome, depth, fold)
+        message(msg)
+        # lasso, train
+        tdl_train <- estimate_trt_diff(X = Xtrain[folds != fold, ],
+          X0 = Xtrain[!trt & folds != fold, ], 
+          X1 = Xtrain[trt  & folds != fold, ], 
+          Y0 = Ytrain[!trt & folds != fold, outcome, drop = TRUE],
+          Y1 = Ytrain[trt  & folds != fold, outcome, drop = TRUE],
+          estimation = estimation)
+        td_train <- tdl_train$trt_diff
+        # tree, train
+        if (depth > 0) {
+          train_tree <- rtree(Xtrain[folds != fold, ], td_train, 
+            maxdepth  = depth,
+            minbucket = 8,
+            cp        = 0)
+        }
+        tdl_test <- estimate_trt_diff(X = Xtrain[folds == fold, ],
+          X0 = Xtrain[!trt & folds == fold, ],
+          X1 = Xtrain[trt  & folds == fold, ],
+          Y0 = Ytrain[!trt & folds == fold, outcome, drop = TRUE],
+          Y1 = Ytrain[trt  & folds == fold, outcome, drop = TRUE],
+          estimation = estimation)
+        y <- tdl_test$trt_diff
+        # y <- trt_diffs[fold == folds, outcome, drop = TRUE]
+        yhat <- if (depth > 0) {
+          unname(predict(train_tree,
+            newdata = as.data.frame(Xtrain[folds == fold, ]))) 
+        } else {
+          mean(tdl_train$trt_diff)
+        }
+        e[folds == fold] <- y - yhat
+      }
+      mse[match(depth, depths), outcome, mc] <- mean(e ^ 2)
     }
-    mse[depth, outcome] <- mean(e ^ 2)
   }
 }
 
-mins <- apply(mse, 2, which.min)
+# average over mc iterations
+mmse <- apply(mse, c(1, 2), mean)
+smse <- apply(mse, c(1, 2), sd)
+
+min_mse_depth <- depths[apply(mmse, 2, which.min)]
+
 cat("Max tree depth giving minimum MSE: \n")
 for(i in seq_along(outcomes))
-  cat(outcomes[i], ":", mins[i], "\n")
+  cat(outcomes[i], ":", min_mse_depth[i], "\n")
+names(min_mse_depth) <- outcomes
 
 
+# is next depth within one sd of min?
+matchmin <- match(min_mse_depth, depths)
+within_one <- mmse[cbind(matchmin + 1, c(1, 2, 3))] < 
+  mmse[cbind(matchmin, c(1, 2, 3))] + 
+  smse[cbind(matchmin, c(1, 2, 3))]
+min_mse_depth <- (min_mse_depth + 1) * within_one + 
+  min_mse_depth * (1 - within_one)
 
 # ~ cv mse plot ----
 cols <- c("steelblue2", "seagreen3", "gold")
 title_names <- c("Total CPD", "CESD", "CO")
-pdf(sprintf("plots/%s/cv-mse.pdf", output_dir))
-plot(mse[, 1] ~ depths,
+pdf(sprintf("plots/%s/cv-mse.pdf", cohort))
+plot(mmse[, 1] ~ depths,
   ylim = range(mse),
   pch = 15,
   col = cols[1],
@@ -301,16 +203,16 @@ plot(mse[, 1] ~ depths,
   xlab = "Maximum Tree Depth",
   main = "Cross Validation Error",
   cex = 1.5)
-points(mse[, 2] ~ depths, 
+points(mmse[, 2] ~ depths, 
   col = cols[2],
   pch = 16,
   cex = 1.5)
-points(mse[, 3] ~ depths, 
+points(mmse[, 3] ~ depths, 
   col = cols[3],
   pch = 17,
   cex = 1.5)
 for(i in 1:3)
-  lines(mse[, i] ~ depths, col = cols[i], lwd = 2)
+  lines(mmse[, i] ~ depths, col = cols[i], lwd = 2)
 legend("topright",
   legend = title_names,
   lty = 1,
@@ -321,10 +223,12 @@ dev.off()
 
 # create the tree for each column in treat_diffs
 # debug(rtree)
+if (any(min_mse_depth == 0))
+  stop("min mse at depth 0")
 tree_list <- list()
 for (outcome in outcomes)
   tree_list[[outcome]] <- rtree(Xtrain, trt_diffs[, outcome, drop = TRUE],
-    maxdepth = which.min(mse[, outcome]), minbucket = 8)  
+    maxdepth = min_mse_depth[outcome], minbucket = 8, cp = 0)  
 
 # fitted treat diffs
 fitted_trt_diffs <- sapply(tree_list, predict)
@@ -341,7 +245,8 @@ names(where_tib) <- where_names
 # each terminal node by computing means within each value
 # of the 'where' vector. (The where vector is used by the
 # rpart package to determine node membership.) This code
-# checks to make sure that we get the correct answer.
+# checks to make sure that we get the correct answer with 
+# this method. 
 check <- list()
 
 for (outcome in outcomes) {
@@ -358,7 +263,9 @@ check <- as_tibble(check)
 
 # if TRUE, then proceed and compute means using this method.
 # If not, debug until TRUE.
-all_equal(round(check, 8), round(fitted_trt_diffs, 8))
+check <- all_equal(round(check, 8), round(fitted_trt_diffs, 8))
+if (!check)
+  stop("check failed. re-program method for finding means within terminal nodes")
 
 # compute means within each where group.
 trt_diffs_w_where <- bind_cols(trt_diffs, where_tib)
@@ -379,34 +286,37 @@ for(outcome in outcomes) {
 # ~ tables ----
 
 # ~~ lasso coefficients ----
-con_coefs <- lapply(trt_diffs_list, '[[', 'm0')
-con_coefs <- lapply(con_coefs, coef)
+if (estimation == "lasso") {
+  con_coefs <- lapply(trt_diffs_list, '[[', 'm0')
+  con_coefs <- lapply(con_coefs, coef)
 
-trt_coefs <- lapply(trt_diffs_list, '[[', 'm1')
-trt_coefs <- lapply(trt_coefs, coef)
+  trt_coefs <- lapply(trt_diffs_list, '[[', 'm1')
+  trt_coefs <- lapply(trt_coefs, coef)
 
-coefs <- mapply(cbind, con_coefs, trt_coefs)
-coefs <- do.call(rbind, coefs)
-coefs <- as.matrix(coefs)
+  coefs <- mapply(cbind, con_coefs, trt_coefs)
+  coefs <- do.call(rbind, coefs)
+  coefs <- as.matrix(coefs)
 
-rownames(coefs) <- paste0(rep(outcomes, sapply(con_coefs, nrow)), " & ",
-  rownames(coefs))
+  rownames(coefs) <- paste0(rep(outcomes, sapply(con_coefs, nrow)), " & ",
+    rownames(coefs))
 
-# keep rows with at least 1 non-zero coefficient:
-coefs <- coefs[rowSums(coefs) > 0, ]
+  # keep rows with at least 1 non-zero coefficient:
+  coefs <- coefs[rowSums(coefs) > 0, ]
 
-# format for printing
-colnames(coefs) <- c("Control", "Treatment")
+  # format for printing
+  colnames(coefs) <- c("Control", "Treatment")
 
-coefs  <- as.data.frame(coefs)
+  coefs  <- as.data.frame(coefs)
 
-coefs[] <- lapply(coefs, function(x) sprintf("%.2f", x))
-coefs[] <- lapply(coefs, function(x) gsub("0.00", "-", x))
+  coefs[] <- lapply(coefs, function(x) sprintf("%.2f", x))
+  coefs[] <- lapply(coefs, function(x) gsub("0.00", "-", x))
 
-write.table(coefs,
-  file      = sprintf("tables/%s/lasso-coefs.txt", output_dir),
-  sep       = " & ",
-  quote     = FALSE)
+  write.table(coefs,
+    file      = sprintf("tables/%s/lasso-coefs.txt", cohort),
+    sep       = " & ",
+    quote     = FALSE)
+  
+}
 
 # ~~ trt heterogeneity ----
 
@@ -428,7 +338,7 @@ tab <- as.data.frame(tab)
 tab$node <- rnames
 
 write.table(tab,
-  file      = sprintf("tables/%s/tree-outomes.txt", output_dir),
+  file      = sprintf("tables/%s/tree-outomes.txt", cohort),
   sep       = " & ",
   quote     = FALSE,
   row.names = FALSE)
@@ -437,12 +347,14 @@ write.table(tab,
 
 # ~~ histograms ----
 title_names <- c("Total CPD", "CESD", "CO")
-pdf(sprintf("plots/%s/trt-diff-histograms.pdf", output_dir))
+pdf(sprintf("plots/%s/trt-diff-histograms.pdf", cohort))
 par(mfrow = c(2, 2))
 for(outcome in outcomes) {
   hist(trt_diffs[, outcome, drop = TRUE],
     main = title_names[match(outcome, outcomes)],
     xlab = title_names[match(outcome, outcomes)])
+  legend("topleft", bty = "n", 
+    legend = sprintf("p = %0.3f", pvals[outcome]))
 }
 dev.off()
 
@@ -451,10 +363,314 @@ dev.off()
 # debug(split_fun)
 
 for(outcome in outcomes) {
-  pdf(sprintf("plots/%s/tree-%s.pdf", output_dir, outcome))
+  pdf(sprintf("plots/%s/tree-%s.pdf", cohort, outcome))
   plot_tree(tree_list[[outcome]])
   dev.off()
 }
 
 
 
+# validation ----
+
+if (cohort == "ITT") {
+  # if not, don't bother with validation
+  # drop week 20 and non-baseline variables
+
+  vars_to_drop <- c("total_cpd_20", "study_cpd", "cesd", "cesd_20", "tne_20", "co_20", "study_cpd", "study_cpd")
+  train <- analysis[, -match(vars_to_drop, names(analysis), NULL)]
+
+  test <- train %>% filter(study == "P1S1")
+  train <- train %>% filter(study == "P2")
+
+
+  # treatment indicators
+  trt_train <- as.logical(train$trt)
+  trt_test  <- as.logical(test$trt)
+
+  # predictor matrices and outcome 
+  Ytrain <- train$total_cpd
+  Ytest  <- test$total_cpd
+
+  vars_to_drop <- c("id", "study", "trt", "total_cpd")
+  Xtrain <- train %>% select(-vars_to_drop)
+  Xtest  <- test  %>% select(-vars_to_drop)
+
+  # cbind(names(Xtrain))
+  # cbind(names(Xtest))
+
+  # Xtrain <- model.matrix(~ 0 + ., Xtrain)
+  # Xtest  <- model.matrix(~ 0 + ., Xtest)
+  Xtrain <- model.matrix(~ ., Xtrain)
+  Xtest  <- model.matrix(~ ., Xtest)
+
+  Xtrain <- Xtrain[, -1]
+  Xtest  <- Xtest[, -1]
+
+  # debugonce(estimate_trt_diff)
+
+  # ~ estimated treatment effects ----
+  tdiffs_train <- estimate_trt_diff(X = Xtrain,
+    X0 = Xtrain[!trt_train, ], 
+    X1 = Xtrain[trt_train, ], 
+    Y0 = Ytrain[!trt_train],
+    Y1 = Ytrain[trt_train],
+    estimation = estimation)
+
+  tdiffs_test <- estimate_trt_diff(X = Xtest,
+    X0 = Xtest[!trt_test, ], 
+    X1 = Xtest[trt_test, ], 
+    Y0 = Ytest[!trt_test],
+    Y1 = Ytest[trt_test],
+    estimation = estimation)
+
+  #  estimated treatment effects
+  trt_diffs_train <- tdiffs_train$trt_diff
+  trt_diffs_test  <- tdiffs_test$trt_diff
+
+  # ~ regression tree ----
+
+  # ~~ cross validation for tree depth ----
+
+  set.seed(19450508)
+  depths <- 0:8
+  n_mc <- 10
+  mse <- array(dim = c(length(depths), n_mc),
+    dimnames = list(depth = depths, iteration = seq_len(n_mc)))
+
+  k <- 5 # number of folds
+  folds <- rep(seq_len(k), length.out = nrow(Xtrain))
+  folds <- sample(folds)
+
+  # for debugging/updating
+  # depth <- 5
+  # fold <- 1
+
+  testdata <- as.data.frame(Xtrain)
+  testdata$total_cpd <- Ytrain
+  for(mc in seq_len(n_mc)) {
+    # loop over depth
+    for (depth in depths) {
+      e <- numeric(nrow(Xtrain)) # prediction error vector
+      # loop over folds
+      for(fold in seq_len(k)) {
+        message(sprintf("mc %i, depth %i, fold %i", mc, depth, fold))
+        # lasso, train
+        tdl_train <- estimate_trt_diff(X = Xtrain[folds != fold, ],
+          X0 = Xtrain[!trt & folds != fold, ], 
+          X1 = Xtrain[trt  & folds != fold, ], 
+          Y0 = Ytrain[!trt & folds != fold],
+          Y1 = Ytrain[trt  & folds != fold],
+          estimation = estimation)
+        td_train <- tdl_train$trt_diff
+        # tree, train
+        if (depth > 0) {
+          train_tree <- rtree(Xtrain[folds != fold, ], td_train, 
+            maxdepth  = depth,
+            minbucket = 8,
+            cp        = 0)
+        }
+        tdl_test <- estimate_trt_diff(X = Xtrain[folds == fold, ],
+          X0 = Xtrain[!trt & folds == fold, ],
+          X1 = Xtrain[trt  & folds == fold, ],
+          Y0 = Ytrain[!trt & folds == fold],
+          Y1 = Ytrain[trt  & folds == fold],
+          estimation = estimation)
+        y <- tdl_test$trt_diff
+        # y <- trt_diffs_train[fold == folds]
+        yhat <- if (depth > 0) {
+          unname(predict(train_tree,
+            newdata = as.data.frame(Xtrain[folds == fold, ]))) 
+        } else {
+          mean(tdl_train$trt_diff)
+        }
+        e[folds == fold] <- y - yhat
+      }
+      mse[match(depth, depths), mc] <- mean(e ^ 2)
+    }
+  }
+
+  # average over iterations
+  mmse <- rowMeans(mse)
+  smse <- apply(mse, 1, sd)
+
+  md <- depths[which.min(mmse)]
+  ds <- sprintf("Depth with minimum MSE for validation: %i\n", md)
+  cat(ds)
+
+  matchmin <- match(md, depths)
+  within_one <- mmse[matchmin + 1] < 
+    mmse[matchmin] + 
+    smse[matchmin]
+  md <- (md + 1) * within_one + 
+    md * (1 - within_one)
+
+
+
+  # debugonce(rtree)
+  tree <- rtree(Xtrain, trt_diffs_train, maxdepth = md,
+    cp        = 0,
+    minbucket = 8)
+
+  # ~ test group means ----
+
+  # predicted means from tree
+
+  if (unique(length(tree$frame$yval)) < length(tree$frame$yval))
+    stop("yval doesn't contain unique values. Use of 'match' is invalid")
+
+  pred_test <- predict(tree, as.data.frame(Xtest))
+  pred_node <- match(pred_test, tree$frame$yval)
+
+  means_by_tree  <- tapply(pred_test, pred_node, mean)
+
+  # observed means using tree covariate partition
+  means_by_group <- tapply(trt_diffs_test, pred_node, mean)
+
+  if (!all(names(means_by_group) == names(means_by_tree)))
+    stop("check sorting of means in means_by_group and means_by_tree")
+
+  # ~ plots ----
+
+
+  # ~~ treatment effects ----
+
+  pdf(sprintf("plots/%s/validation-trt-diff-histograms.pdf", cohort),
+    height = 5,
+    width = 10)
+  par(mfrow = c(1, 2))
+  hist(trt_diffs_train, prob = TRUE,
+    main = "CENIC-P2",
+    xlab = "Estimated Treatment Effects")
+  hist(trt_diffs_test, prob = TRUE,
+    main = "CENIC-P1S1",
+    xlab = "Estimated Treatment Effects")
+  dev.off()
+
+  # ~~ comparing means ----
+
+  cols = c("steelblue2", "seagreen3")
+  pdf(sprintf("plots/%s/validation-means-plot.pdf", cohort))
+  plot(means_by_tree ~ seq_along(sort(unique(pred_node))),
+    pch = 16,
+    xlab = "Terminal Node",
+    ylab = "Treatment Effect",
+    ylim = range(means_by_group, means_by_tree),
+    col = cols[1])
+  points(means_by_group ~ seq_along(sort(unique(pred_node))),
+    pch = 17,
+    col = cols[2])
+  legend("topleft",
+    bty = "n",
+    pch = c(16, 17),
+    col = cols,
+    legend = c("Predicted Mean", "Observed Means"))
+  dev.off()
+
+  pdf(sprintf("plots/%s/validation-scatter-plot.pdf", cohort))
+  plot(means_by_group ~ means_by_tree,
+    pch = 16,
+    ylab = "Observed Means",
+    xlab = "Predicted Means")
+  legend("topleft",
+    legend = sprintf("r = %.3f", cor(means_by_group, means_by_tree)),
+    bty = "n")
+  dev.off()
+
+
+  # ~ tables ----
+
+  # ~~ lasso coefficients ----
+  if (estimation == "lasso") {
+    con_coefs <- lapply(list(tdiffs_train, tdiffs_test), '[[', 'm0')
+    con_coefs <- lapply(con_coefs, coef)
+    con_coefs <- do.call(cbind, con_coefs)
+
+    trt_coefs <- lapply(list(tdiffs_train, tdiffs_test), '[[', 'm1')
+    trt_coefs <- lapply(trt_coefs, coef)
+    trt_coefs <- do.call(cbind, trt_coefs)
+
+    coefs <- rbind(con_coefs, trt_coefs)
+    coefs <- as.matrix(coefs)
+
+    rownames(coefs) <- paste0(rep(c("con", "trt"), each = nrow(con_coefs)), " & ",
+      rownames(coefs))
+
+    # keep rows with at least 1 non-zero coefficient:
+    coefs <- coefs[rowSums(coefs) > 0, ]
+
+    # format for printing
+    colnames(coefs) <- c("Train", "Test")
+
+    coefs  <- as.data.frame(coefs)
+
+    coefs[] <- lapply(coefs, function(x) sprintf("%.2f", x))
+    coefs[] <- lapply(coefs, function(x) gsub("0.00", "-", x))
+
+    write.table(coefs,
+      file      = sprintf("tables/%s/validation-lasso-coefs.txt", cohort),
+      sep       = " & ",
+      quote     = FALSE)
+
+  }
+}
+
+# this code is to reformat the tables.
+# probably the original code should be modified,
+# this is just a temporary fix
+ot <- read.table(sprintf("tables/%s/tree-outomes.txt", cohort),
+  as.is = TRUE, header = TRUE)
+ot <- as_tibble(ot)
+ot <- ot %>% select(-starts_with("X"))
+ot <- ot %>% 
+  separate(node, sep = "\\.", into = c("outcome", "node"))
+ot$node <- as.double(ot$node)
+
+# loop over outcomes
+for (outcome in outcomes){
+  tot <- ot[ot$outcome == outcome, ]
+  tot <- as.matrix(tot[, -1])
+  tot <- t(tot)
+  tot <- as.data.frame(tot)
+  tot <- tot[-1, ]
+  colnames(tot) <- seq_len(ncol(tot))
+  write.table(tot,
+    file = sprintf("tables/%s/tree-%s.txt", cohort, outcome),
+    sep = " & & ",
+    quote = FALSE)
+}
+
+# stuff to create heatmap for figures
+# apply(trt_diffs, 2, range)
+# apply(trt_diffs, 2, median)
+# 
+# (4.93 - -1.227949) / (7.7200636 - -1.227949) * 255
+# (7.6 - -1.227949) / (7.7200636 - -1.227949) * 255
+# (17.735944 - 8.74) / (17.735944 - 7.7200636) * 255
+# 
+# 
+# rgb <- function(val, vals) {
+#   lo <- min(vals)
+#   hi <- max(vals)
+#   med <- median(vals)
+#   los <- round((val - lo) / (med - lo) * 255)
+#   his <- round((hi - val) / (hi - med) * 255)
+#   ltmed <- val < med
+#   if (ltmed) 
+#     msg <- sprintf("r: %i, g: %i, b: %i", los, los, 255)
+#   else
+#     msg <- sprintf("r: %i, g: %i, b: %i", 255, his, his)
+#   msg
+# }
+# 
+# rgb(4.93, trt_diffs$total_cpd_20)
+# rgb(7.6, trt_diffs$total_cpd_20)
+# 
+# lapply(c(4.77, 5.98, 6.86, 7.41), rgb, vals = trt_diffs$co_20)
+# 
+# lapply(c( 8.67, 8.75, 7.49, 7.14), rgb, vals = trt_diffs$total_cpd_20)
+# lapply(c( -3.05, 1.39, -0.2, 2.5), rgb, vals = trt_diffs$cesd_20)
+# lapply(c( 6.34, 5.82, 6.33, 5.21), rgb, vals = trt_diffs$co_20)
+# 
+# lapply(c(6.46, 9.88, 4.79, 8.51, 8.87, 7.65, 10.28, 8.63), rgb, vals = trt_diffs$total_cpd_20)
+# lapply(c(0.16, -0.14, -0.11, -0.68, 0, -0.71, -0.53, -0.65), rgb, vals = trt_diffs$cesd_20)
+# lapply(c(2.63, 4.86, 5.12, 7.1, 6.4, 8.79, 9.68, 12.07), rgb, vals = trt_diffs$co_20)

@@ -2,4 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
-plots/all/*
+plots/ITT/*
+plots/compliant/*
+tables/ITT/*
+tables/compliant/*
