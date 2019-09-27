@@ -7,10 +7,10 @@ library(xtable)
 source("R/functions.R")
 
 # --- global variables --- #
-estimation <- "lasso"
-# estimation <- "random_forest"
-cohort <- "ITT" # use all participants, or compliant ones?
-# cohort <- "compliant"
+# estimation <- "lasso"
+estimation <- "random_forest"
+# cohort <- "ITT" # use all participants, or compliant ones?
+cohort <- "compliant"
 # ------------------------ #
 
 set.seed(123)
@@ -194,7 +194,7 @@ min_mse_depth <- (min_mse_depth + 1) * within_one +
 # ~ cv mse plot ----
 cols <- c("steelblue2", "seagreen3", "gold")
 title_names <- c("Total CPD", "CESD", "CO")
-pdf(sprintf("plots/%s/cv-mse.pdf", cohort))
+pdf(sprintf("plots/%s/%s/cv-mse.pdf", estimation, cohort))
 plot(mmse[, 1] ~ depths,
   ylim = range(mse),
   pch = 15,
@@ -312,7 +312,7 @@ if (estimation == "lasso") {
   coefs[] <- lapply(coefs, function(x) gsub("0.00", "-", x))
 
   write.table(coefs,
-    file      = sprintf("tables/%s/lasso-coefs.txt", cohort),
+    file      = sprintf("tables/%s/%s/lasso-coefs.txt", estimation, cohort),
     sep       = " & ",
     quote     = FALSE)
   
@@ -338,7 +338,7 @@ tab <- as.data.frame(tab)
 tab$node <- rnames
 
 write.table(tab,
-  file      = sprintf("tables/%s/tree-outomes.txt", cohort),
+  file      = sprintf("tables/%s/%s/tree-outomes.txt", estimation, cohort),
   sep       = " & ",
   quote     = FALSE,
   row.names = FALSE)
@@ -347,7 +347,7 @@ write.table(tab,
 
 # ~~ histograms ----
 title_names <- c("Total CPD", "CESD", "CO")
-pdf(sprintf("plots/%s/trt-diff-histograms.pdf", cohort))
+pdf(sprintf("plots/%s/%s/trt-diff-histograms.pdf", estimation, cohort))
 par(mfrow = c(2, 2))
 for(outcome in outcomes) {
   hist(trt_diffs[, outcome, drop = TRUE],
@@ -363,7 +363,7 @@ dev.off()
 # debug(split_fun)
 
 for(outcome in outcomes) {
-  pdf(sprintf("plots/%s/tree-%s.pdf", cohort, outcome))
+  pdf(sprintf("plots/%s/%s/tree-%s.pdf", estimation, cohort, outcome))
   plot_tree(tree_list[[outcome]])
   dev.off()
 }
@@ -534,7 +534,7 @@ if (cohort == "ITT") {
 
   # ~~ treatment effects ----
 
-  pdf(sprintf("plots/%s/validation-trt-diff-histograms.pdf", cohort),
+  pdf(sprintf("plots/%s/%s/validation-trt-diff-histograms.pdf", estimation, cohort),
     height = 5,
     width = 10)
   par(mfrow = c(1, 2))
@@ -549,7 +549,7 @@ if (cohort == "ITT") {
   # ~~ comparing means ----
 
   cols = c("steelblue2", "seagreen3")
-  pdf(sprintf("plots/%s/validation-means-plot.pdf", cohort))
+  pdf(sprintf("plots/%s/%s/validation-means-plot.pdf", estimation, cohort))
   plot(means_by_tree ~ seq_along(sort(unique(pred_node))),
     pch = 16,
     xlab = "Terminal Node",
@@ -566,7 +566,7 @@ if (cohort == "ITT") {
     legend = c("Predicted Mean", "Observed Means"))
   dev.off()
 
-  pdf(sprintf("plots/%s/validation-scatter-plot.pdf", cohort))
+  pdf(sprintf("plots/%s/%s/validation-scatter-plot.pdf", estimation, cohort))
   plot(means_by_group ~ means_by_tree,
     pch = 16,
     ylab = "Observed Means",
@@ -607,7 +607,7 @@ if (cohort == "ITT") {
     coefs[] <- lapply(coefs, function(x) gsub("0.00", "-", x))
 
     write.table(coefs,
-      file      = sprintf("tables/%s/validation-lasso-coefs.txt", cohort),
+      file      = sprintf("tables/%s/%s/validation-lasso-coefs.txt", estimation, cohort),
       sep       = " & ",
       quote     = FALSE)
 
@@ -617,7 +617,7 @@ if (cohort == "ITT") {
 # this code is to reformat the tables.
 # probably the original code should be modified,
 # this is just a temporary fix
-ot <- read.table(sprintf("tables/%s/tree-outomes.txt", cohort),
+ot <- read.table(sprintf("tables/%s/%s/tree-outomes.txt", estimation, cohort),
   as.is = TRUE, header = TRUE)
 ot <- as_tibble(ot)
 ot <- ot %>% select(-starts_with("X"))
@@ -634,7 +634,7 @@ for (outcome in outcomes){
   tot <- tot[-1, ]
   colnames(tot) <- seq_len(ncol(tot))
   write.table(tot,
-    file = sprintf("tables/%s/tree-%s.txt", cohort, outcome),
+    file = sprintf("tables/%s/%s/tree-%s.txt", estimation, cohort, outcome),
     sep = " & & ",
     quote = FALSE)
 }
