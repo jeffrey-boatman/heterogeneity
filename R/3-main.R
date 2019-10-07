@@ -7,46 +7,82 @@ library(xtable)
 source("R/functions.R")
 
 # --- global variables --- #
-# estimation <- "lasso"
-estimation <- "random_forest"
-# cohort <- "ITT" # use all participants, or compliant ones?
-cohort <- "compliant"
+estimation <- "lasso"
+# estimation <- "random_forest"
+cohort <- "ITT" # use all participants, or compliant ones?
+# cohort <- "compliant"
 # ------------------------ #
 
 set.seed(123)
 
 load("../RData/analysis.RData")
 analysis <- analysis %>% rename(trt = teh_treatment)
-analysis <- analysis %>% 
-  mutate(tne_nmolperml_bsl = log(tne_nmolperml_bsl)) %>%
-  rename("ltne" = "tne_nmolperml_bsl")
+# analysis <- analysis %>% 
+#   mutate(tne_nmolperml_bsl = log(tne_nmolperml_bsl)) %>%
+#   rename("ltne" = "tne_nmolperml_bsl")
+analysis <- analysis %>%  
+  mutate(ltne_bsl = log(tne_bsl)) %>%
+  select(-tne_bsl)
+
+# log-transform biomarkers
+biomarkers <- c("nnal_visit0", "phet_visit0", "cema_visit0", "pgem_visit0", 
+  "iso_visit0" , "nnal_visit20" , "phet_visit20", "cema_visit20", 
+  "pgem_visit20", "iso_visit20", "tne_20") 
+
+
+if (any(analysis[, biomarkers] < 0, na.rm = TRUE))
+  stop("can't log transform biomarkers")
+
+analysis[, biomarkers] <- log(analysis[, biomarkers])
+
+
+# prefix biomarkers with 'l' to indicate log
+names(analysis)[match(biomarkers, names(analysis))] <- paste0("l", biomarkers)
+
 
 if (cohort == "compliant") {
   analysis <- analysis %>%
-    filter(trt == 0 | trt == 1 & tne_20 < 6.41)
+    filter(trt == 0 | trt == 1 & ltne_20 < log(6.41))
 }
 
 
 # primary analysis ----
 
 # drop week 6/8 outcomes and any other unnecessaries
-to_drop <- c("tne_20", "study_cpd", "total_cpd", "cesd") 
+to_drop <- c("ltne_20", "study_cpd", "total_cpd", "cesd") 
 train <- analysis
 train[, to_drop] <- NULL
 
 # outcomes that will be used throughout analysis.
-outcomes <- c("total_cpd_20", "cesd_20", "co_20")
+# cesd will be treated as both numeric and binary.
+# bcesd_20 >= 16 means depressed
+train <- train %>%
+  mutate(bcesd_20 = 1 * (cesd_20 >= 16))
+outcomes <- c("total_cpd_20", "cesd_20", "bcesd_20", "co_20", "lnnal_visit20", 
+  "lphet_visit20", "lcema_visit20", "lpgem_visit20", "liso_visit20", 
+  "weight_gain")
 
 # training data is CENIC-P2
 train <- train %>% filter(study == "P2")
-trt   <- as.logical(train$trt) # treatment indicator, only for P2!
-
 
 # matrix of predictors, outcomes.
 # drop variables that will not be used as predictors or as outcomes
 vars_to_drop <- c("id", "study", "trt")
 Ytrain <- train %>% select(outcomes)
 Xtrain <- train %>% select(-outcomes, -vars_to_drop)
+
+# must have complete set of potential predictors for inclusion.
+# missing Y values are handled separately for each variable
+complete_case <- apply(Xtrain, 1, none_are_na)
+Xtrain <- Xtrain[complete_case, ]
+Ytrain <- Ytrain[complete_case, ]
+
+Ytrain_missing <- as_tibble(is.na(Ytrain))
+
+trt   <- as.logical(train$trt) # treatment indicator, only for P2!
+trt   <- trt[complete_case]
+
+
 # Xtrain <- model.matrix(~ 0 + ., Xtrain)
 Xtrain <- model.matrix(~ ., Xtrain)
 Xtrain <- Xtrain[, -1]
@@ -58,17 +94,24 @@ Xtrain <- Xtrain[, -1]
 # ~ treatment effects ----
 trt_diffs_list <- list()
 for (outcome in outcomes) {
+  is_binomial <- ifelse(outcome == "bcesd_20", TRUE, FALSE)
   trt_diffs_list[[outcome]] <- estimate_trt_diff(X = Xtrain,
     X0 = Xtrain[!trt, ], 
     X1 = Xtrain[trt, ], 
     Y0 = Ytrain[, outcome, drop = TRUE][!trt],
     Y1 = Ytrain[, outcome, drop = TRUE][trt],
-    estimation = estimation)
+    estimation = estimation,
+    is_binomial = is_binomial)
 }
 
 # create matrix with estimated treatment effects
 trt_diffs <- sapply(trt_diffs_list, '[[', "trt_diff")
 trt_diffs <- as_tibble(trt_diffs)
+
+# missing Y values have missing values for treatment effect
+for (outcome in outcomes) {
+  trt_diffs[Ytrain_missing[, outcome, drop = TRUE], outcome] <- NA
+}
 
 
 # ~ permutation tests ----
@@ -79,7 +122,15 @@ stddevs <- array(dim = c(n_perm, length(outcomes)),
 
 for(outcome in outcomes) {
   y_perm <- Ytrain[, outcome, drop = TRUE]
-  y_perm[trt] <-  y_perm[trt] - (mean(y_perm[trt]) - mean(y_perm[!trt]))
+  if(outcome != "bcesd_20") {
+    y_perm[trt] <-  y_perm[trt] - (mean(y_perm[trt], na.rm = TRUE) - 
+      mean(y_perm[!trt], na.rm = TRUE))
+  }
+  #complete_temp <- !is.na(y_perm)
+  #x_perm <- Xtrain[complete_temp, ]
+  #y_perm <- y_perm[complete_temp]
+  #trt_temp <- trt[complete_temp]
+  # n <- length(y_perm)
   for(ii in seq_len(n_perm)) {
     index <- seq_len(n)
     index <- sample(index)
@@ -89,8 +140,11 @@ for(outcome in outcomes) {
       X1 = Xtrain[trt_perm, ], 
       Y0 = y_perm[!trt_perm],
       Y1 = y_perm[trt_perm],
-      estimation = estimation)
-    stddevs[ii, outcome] <- sd(trt_diff_perm$trt_diff)
+      estimation = estimation,
+      is_binomial = ifelse(outcome == "bcesd_20", TRUE, FALSE))
+    tdp <- trt_diff_perm$trt_diff
+    tdp[Ytrain_missing[, outcome, drop = TRUE]] <- NA
+    stddevs[ii, outcome] <- sd(tdp, na.rm = TRUE)
     if(ii %% 100 == 0)
       message(outcome, ": ", ii)
   }
@@ -99,7 +153,7 @@ for(outcome in outcomes) {
 # pvals:
 pvals <- list()
 for(outcome in outcomes)
-  pvals[[outcome]] <- mean(stddevs[, outcome] > sd(trt_diffs[, outcome, drop = TRUE]))
+  pvals[[outcome]] <- mean(stddevs[, outcome] > sd(trt_diffs[, outcome, drop = TRUE], na.rm = TRUE))
 pvals <- do.call(c, pvals)
 
 pvals
