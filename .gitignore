@@ -2,7 +2,11 @@
 .Rhistory
 .RData
 .Ruserdata
-plots/ITT/*
-plots/compliant/*
-tables/ITT/*
-tables/compliant/*
+plots/lasso/ITT/*
+plots/lasso/compliant/*
+plots/random_forest/ITT/*
+plots/random_forest/compliant/*
+tables/lasso/ITT/*
+tables/lasso/compliant/*
+tables/random_forest/ITT/*
+tables/random_forest/compliant/*

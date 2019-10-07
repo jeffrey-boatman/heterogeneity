@@ -1,0 +1,10 @@
+Control & Treatment
+total_cpd_20 & age & - & 0.15
+total_cpd_20 & cpd_bsl & 0.84 & 0.64
+total_cpd_20 & ftnd_w_cpd & - & 0.19
+cesd_20 & (Intercept) & 7.58 & 6.10
+cesd_20 & mnws_bsl & - & 0.31
+cesd_20 & cesd_bsl & 0.24 & -
+cesd_20 & pss_bsl & - & 0.07
+co_20 & (Intercept) & 11.80 & 10.49
+co_20 & co_bsl & 0.41 & -
