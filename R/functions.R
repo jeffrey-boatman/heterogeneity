@@ -96,11 +96,21 @@ split_fun <- function(x, labs, digits, varlen, faclen) {
      "co_bsl",       "Baseline CO",
      "cesd_bsl",     "Baseline CESD",
      "wisdm_se",     "WISDM Social/Environmental Goads",
+     "wisdm_sd",     "WISDM Secondary Dependence Motive",
      "cpd_bsl",      "Baseline CPD",
      "ltne",         "Baseline log TNE",
      "ces_enjo",     "CES Enjoyment",
      "genderma = 0", "Male = 0",
-     "genderfe = 1", "Female = 1"
+     "genderfe = 1", "Female = 1",
+     "lpgem_vi",     "log PGEM",
+     "eduHSgra",     "HS Grad",
+     "liso_vis",     "log ISO",
+     "ces_aver ",    "CES Aversion",
+     "wisdm_ce",     "WISDM Cue exposure/associative processes",
+     "wisdm_af",     "WISDM Affiliative attachment",
+     "wisdm_pd",     "WISDM Primary Dependence Motive",
+     "pss_bsl",      "Perceived Stress Scale",
+     "qsu_tot_",     "QSU"
   )
   olds <- ll$old
   news <- ll$new
