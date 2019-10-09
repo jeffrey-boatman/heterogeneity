@@ -9,8 +9,8 @@ source("R/functions.R")
 # --- global variables --- #
 estimation <- "lasso"
 # estimation <- "random_forest"
-cohort <- "ITT" # use all participants, or compliant ones?
-# cohort <- "compliant"
+# cohort <- "ITT" # use all participants, or compliant ones?
+cohort <- "compliant"
 # ------------------------ #
 
 set.seed(123)
@@ -372,8 +372,8 @@ check <- as_tibble(check)
 
 # if TRUE, then proceed and compute means using this method.
 # If not, debug until TRUE.
-check <- all_equal(round(check, 8), round(fitted_trt_diffs, 8))
-if (!check)
+eq <- all_equal(round(check, 8), round(fitted_trt_diffs, 8))
+if (!eq)
   stop("check failed. re-program method for finding means within terminal nodes")
 
 # compute means within each where group.
