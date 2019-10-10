@@ -7,8 +7,8 @@ library(xtable)
 source("R/functions.R")
 
 # --- global variables --- #
-# estimation <- "lasso"
-estimation <- "random_forest"
+estimation <- "lasso"
+# estimation <- "random_forest"
 # cohort <- "ITT" # use all participants, or compliant ones?
 cohort <- "compliant"
 # ------------------------ #
@@ -17,36 +17,72 @@ set.seed(123)
 
 load("../RData/analysis.RData")
 analysis <- analysis %>% rename(trt = teh_treatment)
-analysis <- analysis %>% 
-  mutate(tne_nmolperml_bsl = log(tne_nmolperml_bsl)) %>%
-  rename("ltne" = "tne_nmolperml_bsl")
+# analysis <- analysis %>% 
+#   mutate(tne_nmolperml_bsl = log(tne_nmolperml_bsl)) %>%
+#   rename("ltne" = "tne_nmolperml_bsl")
+# analysis <- analysis %>%  
+#   mutate(ltne_bsl = log(tne_bsl)) %>%
+#   select(-tne_bsl)
+
+# log-transform biomarkers
+biomarkers <- c("tne_bsl", "nnal_visit0", "phet_visit0", "cema_visit0", "pgem_visit0", 
+  "iso_visit0" , "nnal_visit20" , "phet_visit20", "cema_visit20", 
+  "pgem_visit20", "iso_visit20", "tne_20") 
+
+
+if (any(analysis[, biomarkers] < 0, na.rm = TRUE))
+  stop("can't log transform biomarkers")
+
+analysis[, biomarkers] <- log(analysis[, biomarkers])
+
+
+# prefix biomarkers with 'l' to indicate log
+names(analysis)[match(biomarkers, names(analysis))] <- paste0("l", biomarkers)
+
 
 if (cohort == "compliant") {
   analysis <- analysis %>%
-    filter(trt == 0 | trt == 1 & tne_20 < 6.41)
+    filter(trt == 0 | trt == 1 & ltne_20 < log(6.41))
 }
 
 
 # primary analysis ----
 
 # drop week 6/8 outcomes and any other unnecessaries
-to_drop <- c("tne_20", "study_cpd", "total_cpd", "cesd") 
+to_drop <- c("ltne_20", "study_cpd", "total_cpd", "cesd") 
 train <- analysis
 train[, to_drop] <- NULL
 
 # outcomes that will be used throughout analysis.
-outcomes <- c("total_cpd_20", "cesd_20", "co_20")
+# cesd will be treated as both numeric and binary.
+# bcesd_20 >= 16 means depressed
+train <- train %>%
+  mutate(bcesd_20 = 1 * (cesd_20 >= 16))
+outcomes <- c("total_cpd_20", "cesd_20", "bcesd_20", "co_20", "lnnal_visit20", 
+  "lphet_visit20", "lcema_visit20", "lpgem_visit20", "liso_visit20", 
+  "weight_gain")
 
 # training data is CENIC-P2
 train <- train %>% filter(study == "P2")
-trt   <- as.logical(train$trt) # treatment indicator, only for P2!
-
 
 # matrix of predictors, outcomes.
 # drop variables that will not be used as predictors or as outcomes
 vars_to_drop <- c("id", "study", "trt")
 Ytrain <- train %>% select(outcomes)
 Xtrain <- train %>% select(-outcomes, -vars_to_drop)
+
+# must have complete set of potential predictors for inclusion.
+# missing Y values are handled separately for each variable
+complete_case <- apply(Xtrain, 1, none_are_na)
+Xtrain <- Xtrain[complete_case, ]
+Ytrain <- Ytrain[complete_case, ]
+
+Ytrain_missing <- as_tibble(is.na(Ytrain))
+
+trt   <- as.logical(train$trt) # treatment indicator, only for P2!
+trt   <- trt[complete_case]
+
+
 # Xtrain <- model.matrix(~ 0 + ., Xtrain)
 Xtrain <- model.matrix(~ ., Xtrain)
 Xtrain <- Xtrain[, -1]
@@ -58,17 +94,24 @@ Xtrain <- Xtrain[, -1]
 # ~ treatment effects ----
 trt_diffs_list <- list()
 for (outcome in outcomes) {
+  is_binomial <- ifelse(outcome == "bcesd_20", TRUE, FALSE)
   trt_diffs_list[[outcome]] <- estimate_trt_diff(X = Xtrain,
     X0 = Xtrain[!trt, ], 
     X1 = Xtrain[trt, ], 
     Y0 = Ytrain[, outcome, drop = TRUE][!trt],
     Y1 = Ytrain[, outcome, drop = TRUE][trt],
-    estimation = estimation)
+    estimation = estimation,
+    is_binomial = is_binomial)
 }
 
 # create matrix with estimated treatment effects
 trt_diffs <- sapply(trt_diffs_list, '[[', "trt_diff")
 trt_diffs <- as_tibble(trt_diffs)
+
+# missing Y values have missing values for treatment effect
+for (outcome in outcomes) {
+  trt_diffs[Ytrain_missing[, outcome, drop = TRUE], outcome] <- NA
+}
 
 
 # ~ permutation tests ----
@@ -79,7 +122,15 @@ stddevs <- array(dim = c(n_perm, length(outcomes)),
 
 for(outcome in outcomes) {
   y_perm <- Ytrain[, outcome, drop = TRUE]
-  y_perm[trt] <-  y_perm[trt] - (mean(y_perm[trt]) - mean(y_perm[!trt]))
+  if(outcome != "bcesd_20") {
+    y_perm[trt] <-  y_perm[trt] - (mean(y_perm[trt], na.rm = TRUE) - 
+      mean(y_perm[!trt], na.rm = TRUE))
+  }
+  #complete_temp <- !is.na(y_perm)
+  #x_perm <- Xtrain[complete_temp, ]
+  #y_perm <- y_perm[complete_temp]
+  #trt_temp <- trt[complete_temp]
+  # n <- length(y_perm)
   for(ii in seq_len(n_perm)) {
     index <- seq_len(n)
     index <- sample(index)
@@ -89,8 +140,11 @@ for(outcome in outcomes) {
       X1 = Xtrain[trt_perm, ], 
       Y0 = y_perm[!trt_perm],
       Y1 = y_perm[trt_perm],
-      estimation = estimation)
-    stddevs[ii, outcome] <- sd(trt_diff_perm$trt_diff)
+      estimation = estimation,
+      is_binomial = ifelse(outcome == "bcesd_20", TRUE, FALSE))
+    tdp <- trt_diff_perm$trt_diff
+    tdp[Ytrain_missing[, outcome, drop = TRUE]] <- NA
+    stddevs[ii, outcome] <- sd(tdp, na.rm = TRUE)
     if(ii %% 100 == 0)
       message(outcome, ": ", ii)
   }
@@ -99,10 +153,15 @@ for(outcome in outcomes) {
 # pvals:
 pvals <- list()
 for(outcome in outcomes)
-  pvals[[outcome]] <- mean(stddevs[, outcome] > sd(trt_diffs[, outcome, drop = TRUE]))
+  pvals[[outcome]] <- mean(stddevs[, outcome] > sd(trt_diffs[, outcome, drop = TRUE], na.rm = TRUE))
 pvals <- do.call(c, pvals)
 
 pvals
+
+sink(sprintf("tables/%s/%s/permutaion-pvals.txt", estimation, cohort))
+pvals
+sink()
+
 
 
 # ~ cross validation for tree depth ----
@@ -121,52 +180,62 @@ mse <- array(dim = c(length(depths), length(outcomes), n_mc),
 # mc <- 2
 
 for (mc in seq_len(n_mc)) {
-  folds <- rep(seq_len(k), length.out = nrow(Xtrain))
-  folds <- sample(folds)
   # loop over outcomes
   for (outcome in outcomes) {
-    testdata <- as.data.frame(Xtrain)
-    testdata[outcome] <- Ytrain[outcome]
+    # testdata <- as.data.frame(Xtrain)
+    # testdata[outcome] <- Ytrain[outcome]
+    # testdata <- na.omit(testdata)
+    cY <- Ytrain[, outcome, drop = TRUE]
+    cX <- Xtrain[!is.na(cY), ]
+    ctrt <- trt[!is.na(cY)]
+    cY <- cY[!is.na(cY)]
+    folds <- rep(seq_len(k), length.out = nrow(cX))
+    folds <- sample(folds)
     # loop over depth
     for (depth in depths) {
-      e <- numeric(nrow(Xtrain)) # prediction error vector
-      # loop over folds
+      e <- rep(NA, nrow(cX)) # prediction error vector
+      # loop over csed20
       for(fold in seq_len(k)) {
         msg <- sprintf("mc %i, outcome %s, depth %i, fold %i",
           mc, outcome, depth, fold)
         message(msg)
-        # lasso, train
-        tdl_train <- estimate_trt_diff(X = Xtrain[folds != fold, ],
-          X0 = Xtrain[!trt & folds != fold, ], 
-          X1 = Xtrain[trt  & folds != fold, ], 
-          Y0 = Ytrain[!trt & folds != fold, outcome, drop = TRUE],
-          Y1 = Ytrain[trt  & folds != fold, outcome, drop = TRUE],
-          estimation = estimation)
-        td_train <- tdl_train$trt_diff
-        # tree, train
-        if (depth > 0) {
-          train_tree <- rtree(Xtrain[folds != fold, ], td_train, 
-            maxdepth  = depth,
-            minbucket = 8,
-            cp        = 0)
-        }
-        tdl_test <- estimate_trt_diff(X = Xtrain[folds == fold, ],
-          X0 = Xtrain[!trt & folds == fold, ],
-          X1 = Xtrain[trt  & folds == fold, ],
-          Y0 = Ytrain[!trt & folds == fold, outcome, drop = TRUE],
-          Y1 = Ytrain[trt  & folds == fold, outcome, drop = TRUE],
-          estimation = estimation)
-        y <- tdl_test$trt_diff
-        # y <- trt_diffs[fold == folds, outcome, drop = TRUE]
-        yhat <- if (depth > 0) {
-          unname(predict(train_tree,
-            newdata = as.data.frame(Xtrain[folds == fold, ]))) 
-        } else {
-          mean(tdl_train$trt_diff)
-        }
-        e[folds == fold] <- y - yhat
+        try({
+          # lasso, train
+          is_binomial <- ifelse(outcome == "bcesd_20", TRUE, FALSE)
+          tdl_train <- estimate_trt_diff(X = cX[folds != fold, ],
+            X0 = cX[!ctrt & folds != fold, ], 
+            X1 = cX[ctrt  & folds != fold, ], 
+            Y0 = cY[!ctrt & folds != fold],
+            Y1 = cY[ctrt  & folds != fold],
+            estimation = estimation,
+            is_binomial = is_binomial)
+          td_train <- tdl_train$trt_diff
+          # tree, train
+          if (depth > 0) {
+            train_tree <- rtree(cX[folds != fold, ], td_train, 
+              maxdepth  = depth,
+              minbucket = 8,
+              cp        = 0)
+          }
+          tdl_test <- estimate_trt_diff(X = cX[folds == fold, ],
+            X0 = cX[!ctrt & folds == fold, ],
+            X1 = cX[ctrt  & folds == fold, ],
+            Y0 = cY[!ctrt & folds == fold],
+            Y1 = cY[ctrt  & folds == fold],
+            estimation = estimation,
+            is_binomial = is_binomial)
+          y <- tdl_test$trt_diff
+          # y <- trt_diffs[fold == folds, outcome, drop = TRUE]
+          yhat <- if (depth > 0) {
+            unname(predict(train_tree,
+              newdata = as.data.frame(cX[folds == fold, ]))) 
+          } else {
+            mean(tdl_train$trt_diff)
+          }
+          e[folds == fold] <- y - yhat
+        })
       }
-      mse[match(depth, depths), outcome, mc] <- mean(e ^ 2)
+      mse[match(depth, depths), outcome, mc] <- mean(e ^ 2, na.rm = TRUE)
     }
   }
 }
@@ -182,61 +251,101 @@ for(i in seq_along(outcomes))
   cat(outcomes[i], ":", min_mse_depth[i], "\n")
 names(min_mse_depth) <- outcomes
 
+# was previously finding depth with min mse, then
+# increasing depth by one the mse was within 1 sd of
+# the min. not doing this any more.
 
 # is next depth within one sd of min?
-matchmin <- match(min_mse_depth, depths)
-within_one <- mmse[cbind(matchmin + 1, c(1, 2, 3))] < 
-  mmse[cbind(matchmin, c(1, 2, 3))] + 
-  smse[cbind(matchmin, c(1, 2, 3))]
-min_mse_depth <- (min_mse_depth + 1) * within_one + 
-  min_mse_depth * (1 - within_one)
+# matchmin <- match(min_mse_depth, depths)
+# within_one <- mmse[cbind(matchmin + 1, c(1, 2, 3))] < 
+#   mmse[cbind(matchmin, c(1, 2, 3))] + 
+#   smse[cbind(matchmin, c(1, 2, 3))]
+# min_mse_depth <- (min_mse_depth + 1) * within_one + 
+#   min_mse_depth * (1 - within_one)
 
 # ~ cv mse plot ----
-cols <- c("steelblue2", "seagreen3", "gold")
-title_names <- c("Total CPD", "CESD", "CO")
+# cols <- c("steelblue2", "seagreen3", "gold")
+cols <- rainbow(length(outcomes))
+title_names <- c("Total CPD", "CESD", "CESD (Binary)", "CO", 
+  "NNAL", "PheT", "CEMA", "PGEM", "ISO", "Weight Gain")
 pdf(sprintf("plots/%s/%s/cv-mse.pdf", estimation, cohort))
+par(mar=c(5, 4, 4, 8) + 0.1, xpd = TRUE)
 plot(mmse[, 1] ~ depths,
-  ylim = range(mse),
-  pch = 15,
+  ylim = range(mmse),
+  pch = 20,
   col = cols[1],
   ylab = "MSE",
   xlab = "Maximum Tree Depth",
   main = "Cross Validation Error",
   cex = 1.5)
-points(mmse[, 2] ~ depths, 
-  col = cols[2],
-  pch = 16,
-  cex = 1.5)
-points(mmse[, 3] ~ depths, 
-  col = cols[3],
-  pch = 17,
-  cex = 1.5)
-for(i in 1:3)
-  lines(mmse[, i] ~ depths, col = cols[i], lwd = 2)
+lines(mmse[, 1] ~ depths,
+  lwd = 2,
+  col = cols[1])
+# points(mmse[, 2] ~ depths, 
+#   col = cols[2],
+#   pch = 16,
+#   cex = 1.5)
+# points(mmse[, 3] ~ depths, 
+#   col = cols[3],
+#   pch = 17,
+#   cex = 1.5)
+for(ii in 2:length(outcomes)) {
+  points(mmse[, ii] ~ depths,
+    col = cols[ii],
+    pch = 20,
+    cex = 1.5)
+  lines(mmse[, ii] ~ depths,
+    col = cols[ii],
+    lwd = 2)
+}
+# for(i in 1:3)
+  # lines(mmse[, i] ~ depths, col = cols[i], lwd = 2)
 legend("topright",
   legend = title_names,
   lty = 1,
   col = cols,
-  pch = 15:17,
-  bty = "n")
+  pch = 20,
+  bty = "n",
+  inset = c(-0.3625, 0))
 dev.off()
+
+# set all tree depths to 2.
+min_mse_depth <- rep(2, length(min_mse_depth))
+names(min_mse_depth) <- outcomes
 
 # create the tree for each column in treat_diffs
 # debug(rtree)
 if (any(min_mse_depth == 0))
   stop("min mse at depth 0")
 tree_list <- list()
-for (outcome in outcomes)
-  tree_list[[outcome]] <- rtree(Xtrain, trt_diffs[, outcome, drop = TRUE],
+for (outcome in outcomes) {
+  tdt <- trt_diffs[, outcome, drop = TRUE]
+  xtemp <- Xtrain[!is.na(tdt), ]
+  tdt <- tdt[!is.na(tdt)]
+  tree_list[[outcome]] <- rtree(xtemp, tdt,
     maxdepth = min_mse_depth[outcome], minbucket = 8, cp = 0)  
+}
 
 # fitted treat diffs
-fitted_trt_diffs <- sapply(tree_list, predict)
-fitted_trt_diffs <- as_tibble(fitted_trt_diffs)
+fitted_trt_diffs <- lapply(tree_list, predict)
+ftd <- array(dim = dim(trt_diffs))
+colnames(ftd) <- outcomes
+for(outcome in outcomes) {
+  ftd[!Ytrain_missing[, outcome, drop = TRUE], outcome] <- fitted_trt_diffs[[outcome]]
+}
+fitted_trt_diffs <- as_tibble(ftd)
 
 # 'where' matrix showing which obs belong to the same node.
-where_tib <- sapply(tree_list, '[[', 'where')
-where_tib <- as_tibble(where_tib)
+# where_tib <- sapply(tree_list, '[[', 'where')
+# where_tib <- as_tibble(where_tib)
+where_tib <- lapply(tree_list, '[[', 'where')
+wtb <- array(dim = dim(trt_diffs))
+colnames(wtb) <- outcomes
+for(outcome in outcomes) {
+  wtb[!Ytrain_missing[, outcome, drop = TRUE], outcome] <- where_tib[[outcome]]
+}
+where_tib <- as_tibble(wtb)
+
 
 where_names      <- paste0("where_", names(where_tib))
 names(where_tib) <- where_names
@@ -263,8 +372,8 @@ check <- as_tibble(check)
 
 # if TRUE, then proceed and compute means using this method.
 # If not, debug until TRUE.
-check <- all_equal(round(check, 8), round(fitted_trt_diffs, 8))
-if (!check)
+eq <- all_equal(round(check, 8), round(fitted_trt_diffs, 8))
+if (!eq)
   stop("check failed. re-program method for finding means within terminal nodes")
 
 # compute means within each where group.
@@ -277,7 +386,8 @@ for(outcome in outcomes) {
  where_col <- where_names[match(outcome, outcomes)] 
  means <- aggregate(trt_diffs_w_where, 
    by  = list(trt_diffs_w_where[, where_col, drop = TRUE]), 
-   FUN = mean)
+   FUN = mean,
+   na.rm = TRUE)
  means <- means[, c(where_col, outcomes)]
  names(means)[1] <- "node"
  fitted_means[[outcome]] <- means 
@@ -338,7 +448,7 @@ tab <- as.data.frame(tab)
 tab$node <- rnames
 
 write.table(tab,
-  file      = sprintf("tables/%s/%s/tree-outomes.txt", estimation, cohort),
+  file      = sprintf("tables/%s/%s/tree-outcomes.txt", estimation, cohort),
   sep       = " & ",
   quote     = FALSE,
   row.names = FALSE)
@@ -346,15 +456,16 @@ write.table(tab,
 # ~ plots ----
 
 # ~~ histograms ----
-title_names <- c("Total CPD", "CESD", "CO")
+# title_names <- c("Total CPD", "CESD", "CO")
 pdf(sprintf("plots/%s/%s/trt-diff-histograms.pdf", estimation, cohort))
-par(mfrow = c(2, 2))
+par(mfrow = c(3, 4))
 for(outcome in outcomes) {
   hist(trt_diffs[, outcome, drop = TRUE],
     main = title_names[match(outcome, outcomes)],
-    xlab = title_names[match(outcome, outcomes)])
-  legend("topleft", bty = "n", 
-    legend = sprintf("p = %0.3f", pvals[outcome]))
+    xlab = title_names[match(outcome, outcomes)],
+    sub = sprintf("p = %0.3f", pvals[outcome]))
+  # legend("topleft", bty = "n", 
+  #   legend = sprintf("p = %0.3f", pvals[outcome]))
 }
 dev.off()
 
@@ -376,9 +487,16 @@ if (cohort == "ITT") {
   # if not, don't bother with validation
   # drop week 20 and non-baseline variables
 
-  vars_to_drop <- c("total_cpd_20", "study_cpd", "cesd", "cesd_20", "tne_20", "co_20", "study_cpd", "study_cpd")
-  train <- analysis[, -match(vars_to_drop, names(analysis), NULL)]
-
+  #vars_to_drop <- c("total_cpd_20", "study_cpd", "cesd", "cesd_20", "tne_20", "co_20", "study_cpd", "study_cpd")
+  #train <- analysis[, -match(vars_to_drop, names(analysis), NULL)]
+  
+  bios <- paste0('l', biomarkers)
+  bios <- setdiff(bios, "ltne_bsl")
+  train <- analysis[, -match(outcomes, colnames(analysis), 0L)]
+  train <- train[, -match(bios, colnames(train), 0L)]
+  train$weight_visit0 <- NULL
+  
+  train <- na.omit(train)
   test <- train %>% filter(study == "P1S1")
   train <- train %>% filter(study == "P2")
 
@@ -391,7 +509,7 @@ if (cohort == "ITT") {
   Ytrain <- train$total_cpd
   Ytest  <- test$total_cpd
 
-  vars_to_drop <- c("id", "study", "trt", "total_cpd")
+  vars_to_drop <- c("id", "study", "trt", "total_cpd", "study_cpd")
   Xtrain <- train %>% select(-vars_to_drop)
   Xtest  <- test  %>% select(-vars_to_drop)
 
@@ -431,83 +549,80 @@ if (cohort == "ITT") {
 
   # ~~ cross validation for tree depth ----
 
-  set.seed(19450508)
-  depths <- 0:8
-  n_mc <- 10
-  mse <- array(dim = c(length(depths), n_mc),
-    dimnames = list(depth = depths, iteration = seq_len(n_mc)))
-
-  k <- 5 # number of folds
-  folds <- rep(seq_len(k), length.out = nrow(Xtrain))
-  folds <- sample(folds)
+  # set.seed(19450508) depths <- 0:8 n_mc <- 10 mse <- array(dim =
+  # c(length(depths), n_mc), dimnames = list(depth = depths, iteration =
+  # seq_len(n_mc)))
+  #
+  # k <- 5 # number of folds folds <- rep(seq_len(k), length.out = nrow(Xtrain))
+  # folds <- sample(folds)
 
   # for debugging/updating
   # depth <- 5
   # fold <- 1
 
-  testdata <- as.data.frame(Xtrain)
-  testdata$total_cpd <- Ytrain
-  for(mc in seq_len(n_mc)) {
-    # loop over depth
-    for (depth in depths) {
-      e <- numeric(nrow(Xtrain)) # prediction error vector
-      # loop over folds
-      for(fold in seq_len(k)) {
-        message(sprintf("mc %i, depth %i, fold %i", mc, depth, fold))
-        # lasso, train
-        tdl_train <- estimate_trt_diff(X = Xtrain[folds != fold, ],
-          X0 = Xtrain[!trt & folds != fold, ], 
-          X1 = Xtrain[trt  & folds != fold, ], 
-          Y0 = Ytrain[!trt & folds != fold],
-          Y1 = Ytrain[trt  & folds != fold],
-          estimation = estimation)
-        td_train <- tdl_train$trt_diff
-        # tree, train
-        if (depth > 0) {
-          train_tree <- rtree(Xtrain[folds != fold, ], td_train, 
-            maxdepth  = depth,
-            minbucket = 8,
-            cp        = 0)
-        }
-        tdl_test <- estimate_trt_diff(X = Xtrain[folds == fold, ],
-          X0 = Xtrain[!trt & folds == fold, ],
-          X1 = Xtrain[trt  & folds == fold, ],
-          Y0 = Ytrain[!trt & folds == fold],
-          Y1 = Ytrain[trt  & folds == fold],
-          estimation = estimation)
-        y <- tdl_test$trt_diff
-        # y <- trt_diffs_train[fold == folds]
-        yhat <- if (depth > 0) {
-          unname(predict(train_tree,
-            newdata = as.data.frame(Xtrain[folds == fold, ]))) 
-        } else {
-          mean(tdl_train$trt_diff)
-        }
-        e[folds == fold] <- y - yhat
-      }
-      mse[match(depth, depths), mc] <- mean(e ^ 2)
-    }
-  }
-
-  # average over iterations
-  mmse <- rowMeans(mse)
-  smse <- apply(mse, 1, sd)
-
-  md <- depths[which.min(mmse)]
-  ds <- sprintf("Depth with minimum MSE for validation: %i\n", md)
-  cat(ds)
-
-  matchmin <- match(md, depths)
-  within_one <- mmse[matchmin + 1] < 
-    mmse[matchmin] + 
-    smse[matchmin]
-  md <- (md + 1) * within_one + 
-    md * (1 - within_one)
+  # testdata <- as.data.frame(Xtrain)
+  # testdata$total_cpd <- Ytrain
+  # for(mc in seq_len(n_mc)) {
+  #   # loop over depth
+  #   for (depth in depths) {
+  #     e <- numeric(nrow(Xtrain)) # prediction error vector
+  #     # loop over folds
+  #     for(fold in seq_len(k)) {
+  #       message(sprintf("mc %i, depth %i, fold %i", mc, depth, fold))
+  #       # lasso, train
+  #       tdl_train <- estimate_trt_diff(X = Xtrain[folds != fold, ],
+  #         X0 = Xtrain[!trt & folds != fold, ], 
+  #         X1 = Xtrain[trt  & folds != fold, ], 
+  #         Y0 = Ytrain[!trt & folds != fold],
+  #         Y1 = Ytrain[trt  & folds != fold],
+  #         estimation = estimation)
+  #       td_train <- tdl_train$trt_diff
+  #       # tree, train
+  #       if (depth > 0) {
+  #         train_tree <- rtree(Xtrain[folds != fold, ], td_train, 
+  #           maxdepth  = depth,
+  #           minbucket = 8,
+  #           cp        = 0)
+  #       }
+  #       tdl_test <- estimate_trt_diff(X = Xtrain[folds == fold, ],
+  #         X0 = Xtrain[!trt & folds == fold, ],
+  #         X1 = Xtrain[trt  & folds == fold, ],
+  #         Y0 = Ytrain[!trt & folds == fold],
+  #         Y1 = Ytrain[trt  & folds == fold],
+  #         estimation = estimation)
+  #       y <- tdl_test$trt_diff
+  #       # y <- trt_diffs_train[fold == folds]
+  #       yhat <- if (depth > 0) {
+  #         unname(predict(train_tree,
+  #           newdata = as.data.frame(Xtrain[folds == fold, ]))) 
+  #       } else {
+  #         mean(tdl_train$trt_diff)
+  #       }
+  #       e[folds == fold] <- y - yhat
+  #     }
+  #     mse[match(depth, depths), mc] <- mean(e ^ 2)
+  #   }
+  # }
+  # 
+  # # average over iterations
+  # mmse <- rowMeans(mse)
+  # smse <- apply(mse, 1, sd)
+  # 
+  # md <- depths[which.min(mmse)]
+  # ds <- sprintf("Depth with minimum MSE for validation: %i\n", md)
+  # cat(ds)
+  # 
+  # matchmin <- match(md, depths)
+  # within_one <- mmse[matchmin + 1] < 
+  #   mmse[matchmin] + 
+  #   smse[matchmin]
+  # md <- (md + 1) * within_one + 
+  #   md * (1 - within_one)
 
 
 
   # debugonce(rtree)
-  tree <- rtree(Xtrain, trt_diffs_train, maxdepth = md,
+  tree <- rtree(Xtrain, trt_diffs_train, maxdepth = 4,
     cp        = 0,
     minbucket = 8)
 
@@ -617,7 +732,7 @@ if (cohort == "ITT") {
 # this code is to reformat the tables.
 # probably the original code should be modified,
 # this is just a temporary fix
-ot <- read.table(sprintf("tables/%s/%s/tree-outomes.txt", estimation, cohort),
+ot <- read.table(sprintf("tables/%s/%s/tree-outcomes.txt", estimation, cohort),
   as.is = TRUE, header = TRUE)
 ot <- as_tibble(ot)
 ot <- ot %>% select(-starts_with("X"))

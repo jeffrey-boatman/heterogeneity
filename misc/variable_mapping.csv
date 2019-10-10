@@ -36,7 +36,7 @@ CES - psychological reward,ces_reward_bsl,CES1_reward_BSL2,ces1_psych_rand,ces1_
 CES - aversion,ces_aversion_bsl,CES1_aversion_BSL2,ces1_aversion_rand,ces1_aversion_visit0
 CES - enjoyment sensation,ces_enjoyment_bsl,CES1_enjoyment_BSL2,ces1_enjoysens_rand,ces1_3_clean_visit0
 CES - recue craving,ces_cravingreduction_bsl,CES1_cravingreduction_BSL2,ces1_craving_rand,ces1_11_clean_visit0
-baseline TNE,tne_nmolperml_bsl,tne_nmolperml_BSL2,tne_nmolperml_rand,TNE_uncorrected_visit0
+baseline TNE,tne_bsl,tne_nmolperml_BSL2,tne_nmolperml_rand,TNE_uncorrected_visit0
 baseline CPD,cpd_bsl,baseline_cpd,baseline_cpd_ivr,totalcpd_visit0
 total cpd week 6/8,total_cpd,total_cpd_week6,total_cpd_ivr_week6,totalcpd_visit8
 study cpd week 6/8,study_cpd,study_cpd_week6,study_cpd_ivr_week6,studycpd_visit8

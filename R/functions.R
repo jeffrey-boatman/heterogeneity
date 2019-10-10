@@ -1,23 +1,33 @@
 estimate_trt_diff <- function(X, X0, X1, Y0, Y1, 
-  estimation = c("lasso", "random_forest")) {
+  estimation = c("lasso", "random_forest"), is_binomial = FALSE) {
+  
+  complete_0 <- !is.na(Y0)
+  complete_1 <- !is.na(Y1)
+  
+  X0 <- X0[complete_0, ]
+  X1 <- X1[complete_1, ]
+  Y0 <- Y0[complete_0]
+  Y1 <- Y1[complete_1]
   
   estimation <- match.arg(estimation)
+  
+  family <- ifelse(is_binomial, "binomial", "gaussian")
   
   if (estimation == "lasso") {
     require(glmnet)
 
     m0 <- cv.glmnet(x = X0,
       y           = Y0,
-      family      = "gaussian",
+      family      = family,
       alpha       = 1,
       standardize = TRUE)
     m1 <- cv.glmnet(x = X1,
       y           = Y1,
-      family      = "gaussian",
+      family      = family,
       alpha       = 1,
       standardize = TRUE)
-    p0 <- c(predict(m0, newx = X, s = "lambda.min"))
-    p1 <- c(predict(m1, newx = X, s = "lambda.min"))
+    p0 <- c(predict(m0, newx = X, s = "lambda.min", type = "response"))
+    p1 <- c(predict(m1, newx = X, s = "lambda.min", type = "response"))
     trt_diff <- p0 - p1
 
     nonzero_x0 <- rownames(coef(m0))[which(!(coef(m0) == 0))]
@@ -35,6 +45,7 @@ estimate_trt_diff <- function(X, X0, X1, Y0, Y1,
     out$nonzero_x1 <- nonzero_x1
   } else if (estimation == "random_forest") {
 
+    stop('not yet implented for binomial outcomes')
     require(randomForest)
 
     m0 <- randomForest(x = X0, y = Y0)
@@ -85,11 +96,21 @@ split_fun <- function(x, labs, digits, varlen, faclen) {
      "co_bsl",       "Baseline CO",
      "cesd_bsl",     "Baseline CESD",
      "wisdm_se",     "WISDM Social/Environmental Goads",
+     "wisdm_sd",     "WISDM Secondary Dependence Motive",
      "cpd_bsl",      "Baseline CPD",
      "ltne",         "Baseline log TNE",
      "ces_enjo",     "CES Enjoyment",
      "genderma = 0", "Male = 0",
-     "genderfe = 1", "Female = 1"
+     "genderfe = 1", "Female = 1",
+     "lpgem_vi",     "log PGEM",
+     "eduHSgra",     "HS Grad",
+     "liso_vis",     "log ISO",
+     "ces_aver ",    "CES Aversion",
+     "wisdm_ce",     "WISDM Cue exposure/associative processes",
+     "wisdm_af",     "WISDM Affiliative attachment",
+     "wisdm_pd",     "WISDM Primary Dependence Motive",
+     "pss_bsl",      "Perceived Stress Scale",
+     "qsu_tot_",     "QSU"
   )
   olds <- ll$old
   news <- ll$new
@@ -106,3 +127,6 @@ split_fun <- function(x, labs, digits, varlen, faclen) {
   labs
 }
 
+any_is_na <- function(x) any(is.na(x))
+
+none_are_na <- Negate(any_is_na)

@@ -8,7 +8,7 @@ p1s1 <- read.csv("../data/cenicp1s1_data_forJeffB_TEH_20190816.csv",
   na.strings = c("NA", "9995", "9999", "99999", "99995"), as.is = TRUE)
 # p1s2 <- read.csv("../data/cenicp1s2_data_forJeffB_TEH_20190816.csv",
 #   na.strings = c("NA", "9995", "9999", "-9999"), as.is = TRUE) 
-p2 <- read.csv("../data/cenicp2_data_forJeffB_20190816.csv", as.is = TRUE)
+p2 <- read.csv("../data/cenicp2_data_forJeffB_20190925.csv", as.is = TRUE)
 
 summary(p1s1)
 # summary(p1s2)
@@ -106,6 +106,9 @@ message("This assumes that P2 0-1 coding is equivalent to 1-2 coding of P1")
 p1s1$gender <- p1s1$gender - 1
 # p1s2$gender <- p1s2$gender - 1
 
+# ~ weight gain ----
+p2$weight_gain <- p2$weight_visit20 - p2$weight_visit0
+
 # ~ making race the same ----
 # message("This assumes that P2 1-2-3 is equivalent to 0-1-2 coding of P1S1 and P1S2")
 # p2$race <- p2$race - 1 # wrong!
@@ -114,7 +117,15 @@ message("This code will drop columns from each data set if the column names don'
   appear in the other data sets")
 # but be sure to keep week 20 outcomes and week 20 tne in p2
 
-p2_keepers <- c("tne_20", "total_cpd_20", "cesd_20", "co_20")
+intersect(names(p1s1), names(p2))
+setdiff(names(p1s1), names(p2))
+setdiff(names(p2), names(p1s1))
+
+p2_uniques <- c("tne_20", "total_cpd_20", "cesd_20", "co_20", "nnal_visit0", 
+  "phet_visit0", "cema_visit0", "pgem_visit0", "iso_visit0", "nnal_visit20", 
+  "phet_visit20", "cema_visit20", "pgem_visit20", "iso_visit20", "weight_visit0",
+  # "weight_visit20", 
+  "weight_gain")
 
 inames <- intersect(names(p1s1), names(p2))
 
@@ -122,14 +133,14 @@ inames <- intersect(names(p1s1), names(p2))
 p1s1[, setdiff(names(p1s1), inames)] <- NULL
 
 # p1s1 na.omit ----
-p1s1 <- na.omit(p1s1)
+# p1s1 <- na.omit(p1s1)
 
-p1s1[, p2_keepers] <- NA
+p1s1[, p2_uniques] <- NA
 
-p2[, setdiff(names(p2), c(inames, p2_keepers))] <- NULL
+p2[, setdiff(names(p2), c(inames, p2_uniques))] <- NULL
 
 # p2 na.omit ----
-p2 <- na.omit(p2)
+# p2 <- na.omit(p2)
 
 # checking. this should equal TRUE
 all(sort(names(p1s1)) == sort(names(p2)))

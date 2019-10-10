@@ -21,12 +21,12 @@ Type 'q()' to quit R.
 > # "C:\Program Files\R\R-3.6.0\bin\R.exe" CMD BATCH --vanilla R\1-make-analysis-data.R
 > 
 > library(tidyverse)
--- [1mAttaching packages[22m ------------------------------------- tidyverse 1.2.1 --
+-- [1mAttaching packages[22m --------------------------------------------------- tidyverse 1.2.1 --
 [32mv[39m [34mggplot2[39m 3.2.0     [32mv[39m [34mpurrr  [39m 0.3.2
 [32mv[39m [34mtibble [39m 2.1.3     [32mv[39m [34mdplyr  [39m 0.8.1
 [32mv[39m [34mtidyr  [39m 0.8.3     [32mv[39m [34mstringr[39m 1.4.0
 [32mv[39m [34mreadr  [39m 1.3.1     [32mv[39m [34mforcats[39m 0.4.0
--- [1mConflicts[22m ---------------------------------------- tidyverse_conflicts() --
+-- [1mConflicts[22m ------------------------------------------------------ tidyverse_conflicts() --
 [31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
 [31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
 > 
@@ -35,7 +35,7 @@ Type 'q()' to quit R.
 +   na.strings = c("NA", "9995", "9999", "99999", "99995"), as.is = TRUE)
 > # p1s2 <- read.csv("../data/cenicp1s2_data_forJeffB_TEH_20190816.csv",
 > #   na.strings = c("NA", "9995", "9999", "-9999"), as.is = TRUE) 
-> p2 <- read.csv("../data/cenicp2_data_forJeffB_20190816.csv", as.is = TRUE)
+> p2 <- read.csv("../data/cenicp2_data_forJeffB_20190925.csv", as.is = TRUE)
 > 
 > summary(p1s1)
  CENIC_subject_id    treatment         treatment_label    treatment_forTEH
@@ -256,14 +256,38 @@ Type 'q()' to quit R.
  3rd Qu.: 61.3070        3rd Qu.:12.000     3rd Qu.:14.00     3rd Qu.: 24.06  
  Max.   :401.7682        Max.   :51.000     Max.   :48.00     Max.   :184.88  
  NA's   :293             NA's   :292        NA's   :202       NA's   :120     
- studycpd_visit8  TNE_uncorrected_visit8   co_visit20  
- Min.   : 0.000   Min.   :   0.142       Min.   : 0.0  
- 1st Qu.: 9.441   1st Qu.:  12.652       1st Qu.: 8.0  
- Median :16.264   Median :  40.145       Median :15.0  
- Mean   :17.810   Mean   :  53.337       Mean   :16.6  
- 3rd Qu.:23.755   3rd Qu.:  76.473       3rd Qu.:22.0  
- Max.   :90.000   Max.   :1067.072       Max.   :61.0  
- NA's   :120      NA's   :190            NA's   :292   
+ studycpd_visit8  TNE_uncorrected_visit8   co_visit20    nnal_visit0       
+ Min.   : 0.000   Min.   :   0.142       Min.   : 0.0   Min.   : 0.006532  
+ 1st Qu.: 9.441   1st Qu.:  12.652       1st Qu.: 8.0   1st Qu.: 0.736575  
+ Median :16.264   Median :  40.145       Median :15.0   Median : 1.408268  
+ Mean   :17.810   Mean   :  53.337       Mean   :16.6   Mean   : 1.782071  
+ 3rd Qu.:23.755   3rd Qu.:  76.473       3rd Qu.:22.0   3rd Qu.: 2.320611  
+ Max.   :90.000   Max.   :1067.072       Max.   :61.0   Max.   :26.365763  
+ NA's   :120      NA's   :190            NA's   :292                       
+  phet_visit0       cema_visit0        pgem_visit0         iso_visit0     
+ Min.   : 0.1994   Min.   :0.001549   Min.   :   0.234   Min.   :0.01145  
+ 1st Qu.: 1.4045   1st Qu.:0.437334   1st Qu.:  30.808   1st Qu.:0.82179  
+ Median : 2.2630   Median :0.693304   Median :  49.384   Median :1.14019  
+ Mean   : 3.1156   Mean   :0.887096   Mean   :  72.579   Mean   :1.32282  
+ 3rd Qu.: 3.7566   3rd Qu.:1.084145   3rd Qu.:  81.973   3rd Qu.:1.60345  
+ Max.   :41.1135   Max.   :6.275142   Max.   :4053.598   Max.   :7.17056  
+ NA's   :4                            NA's   :6          NA's   :42       
+  nnal_visit20       phet_visit20       cema_visit20      pgem_visit20      
+ Min.   : 0.00598   Min.   : 0.07259   Min.   :0.00234   Min.   :   0.3302  
+ 1st Qu.: 0.24888   1st Qu.: 1.07509   1st Qu.:0.38768   1st Qu.:  29.4518  
+ Median : 0.60284   Median : 1.84880   Median :0.78929   Median :  47.2411  
+ Mean   : 1.03858   Mean   : 2.62237   Mean   :1.03391   Mean   :  65.0982  
+ 3rd Qu.: 1.39485   3rd Qu.: 3.27207   3rd Qu.:1.35108   3rd Qu.:  77.9361  
+ Max.   :14.79070   Max.   :36.79718   Max.   :7.74078   Max.   :1841.4898  
+ NA's   :293        NA's   :295        NA's   :293       NA's   :300        
+  iso_visit20      weight_visit0    weight_visit20  
+ Min.   :0.02049   Min.   : 36.90   Min.   : 36.00  
+ 1st Qu.:0.79102   1st Qu.: 71.40   1st Qu.: 72.20  
+ Median :1.10333   Median : 84.20   Median : 85.10  
+ Mean   :1.29442   Mean   : 86.93   Mean   : 88.11  
+ 3rd Qu.:1.47149   3rd Qu.: 98.90   3rd Qu.: 99.15  
+ Max.   :9.67811   Max.   :204.80   Max.   :213.00  
+ NA's   :314                        NA's   :292     
 > 
 > lapply(Filter(is.numeric, p1s1), range, na.rm = TRUE)
 $treatment_forTEH
@@ -549,6 +573,42 @@ $TNE_uncorrected_visit8
 $co_visit20
 [1]  0 61
 
+$nnal_visit0
+[1]  0.006532218 26.365762680
+
+$phet_visit0
+[1]  0.1994165 41.1134915
+
+$cema_visit0
+[1] 0.001548981 6.275141967
+
+$pgem_visit0
+[1]    0.2342094 4053.5978240
+
+$iso_visit0
+[1] 0.01144657 7.17056329
+
+$nnal_visit20
+[1]  0.005979834 14.790699590
+
+$phet_visit20
+[1]  0.07258526 36.79717638
+
+$cema_visit20
+[1] 0.002344065 7.740784047
+
+$pgem_visit20
+[1]    0.3302143 1841.4898020
+
+$iso_visit20
+[1] 0.02048525 9.67811162
+
+$weight_visit0
+[1]  36.9 204.8
+
+$weight_visit20
+[1]  36 213
+
 > 
 > 
 > # replace names for combining ----
@@ -657,6 +717,9 @@ This assumes that P2 0-1 coding is equivalent to 1-2 coding of P1
 > p1s1$gender <- p1s1$gender - 1
 > # p1s2$gender <- p1s2$gender - 1
 > 
+> # ~ weight gain ----
+> p2$weight_gain <- p2$weight_visit20 - p2$weight_visit0
+> 
 > # ~ making race the same ----
 > # message("This assumes that P2 1-2-3 is equivalent to 0-1-2 coding of P1S1 and P1S2")
 > # p2$race <- p2$race - 1 # wrong!
@@ -667,7 +730,49 @@ This code will drop columns from each data set if the column names don't
   appear in the other data sets
 > # but be sure to keep week 20 outcomes and week 20 tne in p2
 > 
-> p2_keepers <- c("tne_20", "total_cpd_20", "cesd_20", "co_20")
+> intersect(names(p1s1), names(p2))
+ [1] "id"                       "age"                     
+ [3] "gender"                   "race"                    
+ [5] "edu"                      "menthol"                 
+ [7] "cpd_bsl"                  "tne_bsl"                 
+ [9] "co_bsl"                   "ftnd_w_cpd"              
+[11] "wisdm_ae_bsl"             "wisdm_affat_bsl"         
+[13] "wisdm_aut_bsl"            "wisdm_ce_bsl"            
+[15] "wisdm_ceap_bsl"           "wisdm_crav_bsl"          
+[17] "wisdm_loc_bsl"            "wisdm_pdm_bsl"           
+[19] "wisdm_sdm_bsl"            "wisdm_seg_bsl"           
+[21] "wisdm_taste_bsl"          "wisdm_tol_bsl"           
+[23] "wisdm_ts_bsl"             "wisdm_wc_bsl"            
+[25] "qsu_f1_bsl"               "qsu_f2_bsl"              
+[27] "qsu_tot_bsl"              "mnws_bsl"                
+[29] "cesd_bsl"                 "panas_pos_bsl"           
+[31] "panas_neg_bsl"            "ces_satisfcation_bsl"    
+[33] "ces_reward_bsl"           "ces_aversion_bsl"        
+[35] "pss_bsl"                  "ces_enjoyment_bsl"       
+[37] "ces_cravingreduction_bsl" "ftnd_wo_cpd"             
+[39] "total_cpd"                "study_cpd"               
+[41] "cesd"                     "study"                   
+[43] "teh_treatment"            "teh_control"             
+> setdiff(names(p1s1), names(p2))
+[1] "treatment"                "treatment_label"         
+[3] "treatment_forTEH"         "cannabis"                
+[5] "baseline_drinks_tlfb"     "non_study_cpd"           
+[7] "tne_nmolperml_week6"      "creatinine_mgperdl_week6"
+> setdiff(names(p2), names(p1s1))
+ [1] "Treatment"              "site"                   "smast_bsl"             
+ [4] "dast_bsl"               "tne_visit0"             "total_cpd_20"          
+ [7] "study_cpd_20"           "tne_20"                 "cesd_20"               
+[10] "TNE_uncorrected_visit8" "co_20"                  "nnal_visit0"           
+[13] "phet_visit0"            "cema_visit0"            "pgem_visit0"           
+[16] "iso_visit0"             "nnal_visit20"           "phet_visit20"          
+[19] "cema_visit20"           "pgem_visit20"           "iso_visit20"           
+[22] "weight_visit0"          "weight_visit20"         "weight_gain"           
+> 
+> p2_uniques <- c("tne_20", "total_cpd_20", "cesd_20", "co_20", "nnal_visit0", 
++   "phet_visit0", "cema_visit0", "pgem_visit0", "iso_visit0", "nnal_visit20", 
++   "phet_visit20", "cema_visit20", "pgem_visit20", "iso_visit20", "weight_visit0",
++   # "weight_visit20", 
++   "weight_gain")
 > 
 > inames <- intersect(names(p1s1), names(p2))
 > 
@@ -675,14 +780,14 @@ This code will drop columns from each data set if the column names don't
 > p1s1[, setdiff(names(p1s1), inames)] <- NULL
 > 
 > # p1s1 na.omit ----
-> p1s1 <- na.omit(p1s1)
+> # p1s1 <- na.omit(p1s1)
 > 
-> p1s1[, p2_keepers] <- NA
+> p1s1[, p2_uniques] <- NA
 > 
-> p2[, setdiff(names(p2), c(inames, p2_keepers))] <- NULL
+> p2[, setdiff(names(p2), c(inames, p2_uniques))] <- NULL
 > 
 > # p2 na.omit ----
-> p2 <- na.omit(p2)
+> # p2 <- na.omit(p2)
 > 
 > # checking. this should equal TRUE
 > all(sort(names(p1s1)) == sort(names(p2)))
@@ -694,7 +799,7 @@ This code will drop columns from each data set if the column names don't
 > table(analysis$edu)
 
   1   2   3   4   5   6 
- 58 228 533 265  82  28 
+ 74 301 690 293  82  29 
 > analysis$edu <- factor(analysis$edu)
 > levels(analysis$edu) <- c(1, 1, 2, 3, 3, 3)
 > analysis$edu <- factor(analysis$edu, 
@@ -702,24 +807,24 @@ This code will drop columns from each data set if the column names don't
 > table(analysis$edu)
 
          HSorLess            HSgrad SomeCollegeOrMore 
-              286               533               375 
+              375               690               404 
 > 
 > # ~ label race ----
 > table(analysis$race)
 
   0   1   2 
-672 410 112 
+832 487 137 
 > analysis$race <- factor(analysis$race, labels = c("white", "black", "other"))
 > table(analysis$race)
 
 white black other 
-  672   410   112 
+  832   487   137 
 > 
 > # ~ label gender ---- 
 > table(analysis$gender)
 
   0   1 
-626 568 
+752 717 
 > analysis$gender <- factor(analysis$gender, labels = c("male", "female"))
 > 
 > # analysis <- na.omit(analysis)
@@ -732,4 +837,4 @@ white black other
 > 
 > proc.time()
    user  system elapsed 
-   2.00    0.42    3.21 
+   2.26    0.39    3.75 
