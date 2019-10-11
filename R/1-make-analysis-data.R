@@ -106,6 +106,13 @@ message("This assumes that P2 0-1 coding is equivalent to 1-2 coding of P1")
 p1s1$gender <- p1s1$gender - 1
 # p1s2$gender <- p1s2$gender - 1
 
+# ~ check weight units ----
+summary(p2$weight_visit0)
+tail(sort(p2$weight_visit0))
+tail(sort(p2$weight_visit20))
+
+with(p2, plot(weight_visit20 ~ weight_visit0))
+
 # ~ weight gain ----
 p2$weight_gain <- p2$weight_visit20 - p2$weight_visit0
 
