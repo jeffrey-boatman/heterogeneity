@@ -310,7 +310,7 @@ legend("topright",
 dev.off()
 
 # set all tree depths to 2.
-min_mse_depth <- rep(2, length(min_mse_depth))
+min_mse_depth <- rep(2, length(outcomes))
 names(min_mse_depth) <- outcomes
 
 # create the tree for each column in treat_diffs
@@ -381,6 +381,7 @@ trt_diffs_w_where <- bind_cols(trt_diffs, where_tib)
 trt_diffs_w_where
 
 fitted_means <- list()
+fitted_SEMs  <- list()
 
 for(outcome in outcomes) {
  where_col <- where_names[match(outcome, outcomes)] 
@@ -388,9 +389,15 @@ for(outcome in outcomes) {
    by  = list(trt_diffs_w_where[, where_col, drop = TRUE]), 
    FUN = mean,
    na.rm = TRUE)
+ SEMs <- aggregate(trt_diffs_w_where, 
+   by  = list(trt_diffs_w_where[, where_col, drop = TRUE]), 
+   FUN = SEM)
  means <- means[, c(where_col, outcomes)]
+ SEMs  <- SEMs[, c(where_col, outcomes)]
  names(means)[1] <- "node"
+ names(SEMs)[1]  <- "node"
  fitted_means[[outcome]] <- means 
+ fitted_SEMs[[outcome]]  <- SEMs
 }
 
 # ~ tables ----
@@ -430,28 +437,50 @@ if (estimation == "lasso") {
 
 # ~~ trt heterogeneity ----
 
-n_lines <- sapply(fitted_means, nrow)
+for (outcome in outcomes) {
+  mt <- fitted_means[[outcome]]
+  st <- fitted_SEMs[[outcome]]
+  dm <- dim(mt)
+  dn <- dimnames(mt)
 
-tab    <- do.call(rbind, fitted_means)
-rnames <- rownames(tab)
-dtab   <- dim(tab)
-tab    <- as.numeric(sprintf("%.2f", as.matrix(tab)))
-tab    <- array(tab, dim = dtab)
+  mt <- as.list(c(as.matrix(mt)))
+  st <- as.list(c(as.matrix(st)))
 
-tab <- apply(tab, 2, function(x) sprintf("%0.2f", x))
+  tab <- mapply(function(x, y) sprintf("%0.2f (%0.2f)", x, y),
+    mt, st)
+  tab <- array(tab, dim = dm, dimnames = dn)
+  tab <- t(tab)
+  tab <- as.data.frame(tab)
+  tab <- tab[-1, ]
+  colnames(tab) <- paste0("node", colnames(tab))
 
-colnames(tab) <- c("node", outcomes)
-# rownames(tab) <- rnames
+  sink(file = sprintf("tables/%s/%s/tree-%s.txt", estimation, cohort, outcome))
+  print(tab)
+  sink()
+}
 
-tab <- as.data.frame(tab)
-
-tab$node <- rnames
-
-write.table(tab,
-  file      = sprintf("tables/%s/%s/tree-outcomes.txt", estimation, cohort),
-  sep       = " & ",
-  quote     = FALSE,
-  row.names = FALSE)
+# n_lines <- sapply(fitted_means, nrow)
+# 
+# tab    <- do.call(rbind, fitted_means)
+# rnames <- rownames(tab)
+# dtab   <- dim(tab)
+# tab    <- as.numeric(sprintf("%.2f", as.matrix(tab)))
+# tab    <- array(tab, dim = dtab)
+# 
+# tab <- apply(tab, 2, function(x) sprintf("%0.2f", x))
+# 
+# colnames(tab) <- c("node", outcomes)
+# # rownames(tab) <- rnames
+# 
+# tab <- as.data.frame(tab)
+# 
+# tab$node <- rnames
+# 
+# write.table(tab,
+#   file      = sprintf("tables/%s/%s/tree-outcomes.txt", estimation, cohort),
+#   sep       = " & ",
+#   quote     = FALSE,
+#   row.names = FALSE)
 
 # ~ plots ----
 
@@ -729,30 +758,29 @@ if (cohort == "ITT") {
   }
 }
 
-# this code is to reformat the tables.
-# probably the original code should be modified,
-# this is just a temporary fix
-ot <- read.table(sprintf("tables/%s/%s/tree-outcomes.txt", estimation, cohort),
-  as.is = TRUE, header = TRUE)
-ot <- as_tibble(ot)
-ot <- ot %>% select(-starts_with("X"))
-ot <- ot %>% 
-  separate(node, sep = "\\.", into = c("outcome", "node"))
-ot$node <- as.double(ot$node)
-
-# loop over outcomes
-for (outcome in outcomes){
-  tot <- ot[ot$outcome == outcome, ]
-  tot <- as.matrix(tot[, -1])
-  tot <- t(tot)
-  tot <- as.data.frame(tot)
-  tot <- tot[-1, ]
-  colnames(tot) <- seq_len(ncol(tot))
-  write.table(tot,
-    file = sprintf("tables/%s/%s/tree-%s.txt", estimation, cohort, outcome),
-    sep = " & & ",
-    quote = FALSE)
-}
+# this code was used to reformat the tables. The 
+# reformatting is now done earlier in the code.
+# ot <- read.table(sprintf("tables/%s/%s/tree-outcomes.txt", estimation, cohort),
+#   as.is = TRUE, header = TRUE)
+# ot <- as_tibble(ot)
+# ot <- ot %>% select(-starts_with("X"))
+# ot <- ot %>% 
+#   separate(node, sep = "\\.", into = c("outcome", "node"))
+# ot$node <- as.double(ot$node)
+# 
+# # loop over outcomes
+# for (outcome in outcomes){
+#   tot <- ot[ot$outcome == outcome, ]
+#   tot <- as.matrix(tot[, -1])
+#   tot <- t(tot)
+#   tot <- as.data.frame(tot)
+#   tot <- tot[-1, ]
+#   colnames(tot) <- seq_len(ncol(tot))
+#   write.table(tot,
+#     file = sprintf("tables/%s/%s/tree-%s.txt", estimation, cohort, outcome),
+#     sep = " & & ",
+#     quote = FALSE)
+# }
 
 # stuff to create heatmap for figures
 # apply(trt_diffs, 2, range)
