@@ -21,12 +21,12 @@ Type 'q()' to quit R.
 > # "C:\Program Files\R\R-3.6.0\bin\R.exe" CMD BATCH --vanilla R\1-make-analysis-data.R
 > 
 > library(tidyverse)
--- [1mAttaching packages[22m --------------------------------------------------- tidyverse 1.2.1 --
+-- [1mAttaching packages[22m ----------------------------------------------- tidyverse 1.2.1 --
 [32mv[39m [34mggplot2[39m 3.2.0     [32mv[39m [34mpurrr  [39m 0.3.2
 [32mv[39m [34mtibble [39m 2.1.3     [32mv[39m [34mdplyr  [39m 0.8.1
 [32mv[39m [34mtidyr  [39m 0.8.3     [32mv[39m [34mstringr[39m 1.4.0
 [32mv[39m [34mreadr  [39m 1.3.1     [32mv[39m [34mforcats[39m 0.4.0
--- [1mConflicts[22m ------------------------------------------------------ tidyverse_conflicts() --
+-- [1mConflicts[22m -------------------------------------------------- tidyverse_conflicts() --
 [31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
 [31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
 > 
@@ -789,25 +789,49 @@ This code will drop columns from each data set if the column names don't
 > # p2 na.omit ----
 > # p2 <- na.omit(p2)
 > 
+> 
+> # ~ label education ----
+> table(p2$edu)
+
+  1   2   3 
+ 63 233 456 
+> p2$edu <- factor(p2$edu, 
++   labels = c("HSorLess", "HSgrad", "SomeCollegeOrMore"))
+> table(p2$edu)
+
+         HSorLess            HSgrad SomeCollegeOrMore 
+               63               233               456 
+> 
+> 
+> table(p1s1$edu)
+
+  1   2   3   4   5   6 
+ 11  68 234 293  82  29 
+> p1s1$edu <- factor(p1s1$edu)
+> levels(p1s1$edu) <- c(1, 1, 2, 3, 3, 3)
+> p1s1$edu <- factor(p1s1$edu, 
++   labels = c("HSorLess", "HSgrad", "SomeCollegeOrMore"))
+> table(p1s1$edu)
+
+         HSorLess            HSgrad SomeCollegeOrMore 
+               79               234               404 
+> 
+> with(p1s1, table(edu))
+edu
+         HSorLess            HSgrad SomeCollegeOrMore 
+               79               234               404 
+> with(p2, table(edu))
+edu
+         HSorLess            HSgrad SomeCollegeOrMore 
+               63               233               456 
+> 
+> 
 > # checking. this should equal TRUE
 > all(sort(names(p1s1)) == sort(names(p2)))
 [1] TRUE
 > 
 > analysis <- rbind(p1s1, p2)
 > 
-> # ~ label education ----
-> table(analysis$edu)
-
-  1   2   3   4   5   6 
- 74 301 690 293  82  29 
-> analysis$edu <- factor(analysis$edu)
-> levels(analysis$edu) <- c(1, 1, 2, 3, 3, 3)
-> analysis$edu <- factor(analysis$edu, 
-+   labels = c("HSorLess", "HSgrad", "SomeCollegeOrMore"))
-> table(analysis$edu)
-
-         HSorLess            HSgrad SomeCollegeOrMore 
-              375               690               404 
 > 
 > # ~ label race ----
 > table(analysis$race)
@@ -837,4 +861,4 @@ white black other
 > 
 > proc.time()
    user  system elapsed 
-   2.26    0.39    3.75 
+   2.29    0.35    4.40 

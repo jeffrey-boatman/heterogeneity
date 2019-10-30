@@ -142,18 +142,30 @@ p2[, setdiff(names(p2), c(inames, p2_uniques))] <- NULL
 # p2 na.omit ----
 # p2 <- na.omit(p2)
 
+
+# ~ label education ----
+table(p2$edu)
+p2$edu <- factor(p2$edu, 
+  labels = c("HSorLess", "HSgrad", "SomeCollegeOrMore"))
+table(p2$edu)
+
+
+table(p1s1$edu)
+p1s1$edu <- factor(p1s1$edu)
+levels(p1s1$edu) <- c(1, 1, 2, 3, 3, 3)
+p1s1$edu <- factor(p1s1$edu, 
+  labels = c("HSorLess", "HSgrad", "SomeCollegeOrMore"))
+table(p1s1$edu)
+
+with(p1s1, table(edu))
+with(p2, table(edu))
+
+
 # checking. this should equal TRUE
 all(sort(names(p1s1)) == sort(names(p2)))
 
 analysis <- rbind(p1s1, p2)
 
-# ~ label education ----
-table(analysis$edu)
-analysis$edu <- factor(analysis$edu)
-levels(analysis$edu) <- c(1, 1, 2, 3, 3, 3)
-analysis$edu <- factor(analysis$edu, 
-  labels = c("HSorLess", "HSgrad", "SomeCollegeOrMore"))
-table(analysis$edu)
 
 # ~ label race ----
 table(analysis$race)

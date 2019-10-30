@@ -74,6 +74,9 @@ Xtrain <- train %>% select(-outcomes, -vars_to_drop)
 # must have complete set of potential predictors for inclusion.
 # missing Y values are handled separately for each variable
 complete_case <- apply(Xtrain, 1, none_are_na)
+# export complete_case for use in other files, e.g., 2-table-1
+if (cohort == "compliant")
+  save(list = "complete_case", file = "../RData/complete_case.RData")
 Xtrain <- Xtrain[complete_case, ]
 Ytrain <- Ytrain[complete_case, ]
 
