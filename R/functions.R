@@ -130,3 +130,9 @@ split_fun <- function(x, labs, digits, varlen, faclen) {
 any_is_na <- function(x) any(is.na(x))
 
 none_are_na <- Negate(any_is_na)
+
+SEM <- function(x) {
+  x <- na.omit(x)
+  n <- length(x)
+  sqrt(var(x) / n)
+}
