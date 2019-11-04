@@ -9,8 +9,8 @@ source("R/functions.R")
 # --- global variables --- #
 estimation <- "lasso"
 # estimation <- "random_forest"
-# cohort <- "ITT" # use all participants, or compliant ones?
-cohort <- "compliant"
+cohort <- "ITT" # use all participants, or compliant ones?
+# cohort <- "compliant"
 # ------------------------ #
 
 set.seed(123)
@@ -49,7 +49,7 @@ if (cohort == "compliant") {
 # primary analysis ----
 
 # drop week 6/8 outcomes and any other unnecessaries
-to_drop <- c("ltne_20", "study_cpd", "total_cpd", "cesd") 
+to_drop <- c("study_cpd", "total_cpd", "cesd") 
 train <- analysis
 train[, to_drop] <- NULL
 
@@ -58,9 +58,9 @@ train[, to_drop] <- NULL
 # bcesd_20 >= 16 means depressed
 train <- train %>%
   mutate(bcesd_20 = 1 * (cesd_20 >= 16))
-outcomes <- c("total_cpd_20", "cesd_20", "bcesd_20", "co_20", "lnnal_visit20", 
-  "lphet_visit20", "lcema_visit20", "lpgem_visit20", "liso_visit20", 
-  "weight_gain")
+outcomes <- c("total_cpd_20", "cesd_20", "bcesd_20", "co_20", "ltne_20", 
+  "lnnal_visit20", "lphet_visit20", "lcema_visit20", "lpgem_visit20", 
+  "liso_visit20", "weight_gain")
 
 # training data is CENIC-P2
 train <- train %>% filter(study == "P2")
@@ -116,6 +116,16 @@ for (outcome in outcomes) {
   trt_diffs[Ytrain_missing[, outcome, drop = TRUE], outcome] <- NA
 }
 
+# ~ output histogram data ----
+histolist <- list()
+for (outcome in outcomes) {
+  x <- trt_diffs[, outcome, drop = TRUE]
+  h <- hist(x, plot = FALSE)
+  h$mean <- mean(x, na.rm = TRUE)
+  histolist[[outcome]] <- h
+}
+
+save(list = "histolist", file = sprintf("../RData/histolist-%s.RData", cohort))
 
 # ~ permutation tests ----
 n_perm <- 1000
@@ -489,17 +499,28 @@ for (outcome in outcomes) {
 
 # ~~ histograms ----
 # title_names <- c("Total CPD", "CESD", "CO")
-pdf(sprintf("plots/%s/%s/trt-diff-histograms.pdf", estimation, cohort))
-par(mfrow = c(3, 4))
-for(outcome in outcomes) {
-  hist(trt_diffs[, outcome, drop = TRUE],
-    main = title_names[match(outcome, outcomes)],
-    xlab = title_names[match(outcome, outcomes)],
-    sub = sprintf("p = %0.3f", pvals[outcome]))
-  # legend("topleft", bty = "n", 
-  #   legend = sprintf("p = %0.3f", pvals[outcome]))
-}
-dev.off()
+# pdf(sprintf("plots/%s/%s/trt-diff-histograms.pdf", estimation, cohort))
+# par(mfrow = c(3, 4))
+# for(outcome in outcomes) {
+#   hist(trt_diffs[, outcome, drop = TRUE],
+#     main = title_names[match(outcome, outcomes)],
+#     xlab = title_names[match(outcome, outcomes)],
+#     sub = sprintf("p = %0.3f", pvals[outcome]))
+#   # legend("topleft", bty = "n", 
+#   #   legend = sprintf("p = %0.3f", pvals[outcome]))
+# }
+# dev.off()
+
+# for (outcome in outcomes) {
+#   pdf(sprintf("plots/%s/%s/trt-diff-histograms-%s.pdf", estimation, cohort, outcome))
+#   hist(trt_diffs[, outcome, drop = TRUE],
+#     main = title_names[match(outcome, outcomes)],
+#     xlab = title_names[match(outcome, outcomes)],
+#     #,sub = sprintf("p = %0.3f", pvals[outcome])
+#     sub = sprintf("%s Analysis", ifelse(cohort == "compliant", "Compliers", "ITT")),
+#     prob = TRUE)
+#   dev.off()
+# }
 
 # ~~ trees ----
 
