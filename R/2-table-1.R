@@ -3,20 +3,49 @@ library(tableone)
 library(labelled)
 
 load("../RData/analysis.RData")
-load("../RData/complete_case.RData")
+# load("../RData/complete_case.RData")
 
-# restrict to compliant participants
+# pasted ----
+set.seed(123)
+
+load("../RData/analysis.RData")
+analysis <- analysis %>% rename(trt = teh_treatment)
+
+with(analysis, table(gender, trt, study))
+
+# log-transform biomarkers
+# biomarkers <- c("tne_bsl", "nnal_visit0", "phet_visit0", "cema_visit0", "pgem_visit0", 
+#   "iso_visit0" , "nnal_visit20" , "phet_visit20", "cema_visit20", 
+#   "pgem_visit20", "iso_visit20", "tne_20") 
+# 
+# 
+# if (any(analysis[, biomarkers] < 0, na.rm = TRUE))
+#   stop("can't log transform biomarkers")
+# 
+# analysis[, biomarkers] <- log(analysis[, biomarkers])
+
+
+# prefix biomarkers with 'l' to indicate log
+# names(analysis)[match(biomarkers, names(analysis))] <- paste0("l", biomarkers)
+
+
 analysis <- analysis %>%
-  rename(trt = teh_treatment) %>%
-  mutate(menthol = ifelse(menthol == 0, "No", "Yes")) %>%
-  filter(trt == 0 | trt == 1 & log(tne_20) < log(6.41)) %>%
+  mutate(cohort = ifelse(trt == 0, 1, ifelse(!is.na(tne_20) & tne_20 < 6.41, 2, 3)),
+    menthol = ifelse(menthol == 0, "No", "Yes")) %>% 
   filter(study == "P2")
-com <- analysis[complete_case, ]
 
+
+# primary analysis ----
+
+
+
+com <- analysis
 nn <- sort(names(com))
 
+# t1 <- select(com, age, gender, race, edu, cpd_bsl, co_bsl, tne_bsl, ftnd_w_cpd,
+#   ftnd_wo_cpd, wisdm_ts_bsl, wisdm_pdm_bsl, wisdm_sdm_bsl, menthol, trt)
 t1 <- select(com, age, gender, race, edu, cpd_bsl, co_bsl, tne_bsl, ftnd_w_cpd,
-  ftnd_wo_cpd, wisdm_ts_bsl, wisdm_pdm_bsl, wisdm_sdm_bsl, menthol, trt)
+  ftnd_wo_cpd, wisdm_ts_bsl, wisdm_pdm_bsl, wisdm_sdm_bsl, menthol, cohort)
 
 # age
 # sex
@@ -59,7 +88,7 @@ t1 <- set_variable_labels(t1,
 
 
 tab <- CreateTableOne(data = t1, 
-  strata = "trt", 
+  strata = "cohort", 
   test   = FALSE)
 
 tab2 <- print(tab, 
@@ -73,3 +102,13 @@ tab2 <- print(tab,
 write.table(as.data.frame(tab2),
   quote = FALSE,
   sep = " & ")
+
+with(analysis, {
+  tot <- sum(cohort %in% c(2, 3))
+  ncom <- sum(cohort == 2)
+  pcom <- ncom / tot
+  cat("--- Compliance Summary ---\n")
+  cat(sprintf(" - Total in Immediate Reduction Group: %i\n", tot))
+  cat(sprintf(" - Number Compliant: %i\n", ncom))
+  cat(sprintf(" - Percent Compliant: %.1f%%", pcom * 100))
+})
