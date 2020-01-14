@@ -102,8 +102,13 @@ message("This assumes that P2 1-2-3 is equivalent to 0-1-2 coding of P1S1 and P1
 p2$race <- p2$race - 1
 
 # ~ make gender the same ----
-message("This assumes that P2 0-1 coding is equivalent to 1-2 coding of P1")
-p1s1$gender <- p1s1$gender - 1
+#message("This assumes that P2 0-1 coding is equivalent to 1-2 coding of P1")
+#p1s1$gender <- p1s1$gender - 1
+table(p1s1$gender)
+table(p2$gender)
+# p1s1$gender: 1 = male, 2 = female
+# p2$gender,   1 = male, 0 = female
+p2$gender <- ifelse(p2$gender == 0, 2, p2$gender)
 # p1s2$gender <- p1s2$gender - 1
 
 # ~ check weight units ----
@@ -182,6 +187,7 @@ table(analysis$race)
 # ~ label gender ---- 
 table(analysis$gender)
 analysis$gender <- factor(analysis$gender, labels = c("male", "female"))
+with(analysis, table(gender, teh_treatment, study))
 
 # analysis <- na.omit(analysis)
 

@@ -35,7 +35,9 @@ for (outcome in outcomes) {
     border = "white",
     main = sprintf("%s, Compliers Analysis", title_names[match(outcome, outcomes)]),
     xlim = xl[[outcome]],
-    xlab = title_names[match(outcome, outcomes)]
+    #xlab = title_names[match(outcome, outcomes)]
+    xlab = "Estimated Treatment Effect",
+    sub  = "(Control - Treatment)"
     )
   lines(rep(h$mean, 2), c(0, 1.05 * max(h$density)), lty = 2, lwd = 2)
   dev.off()
@@ -51,7 +53,9 @@ for (outcome in outcomes) {
     border = "white",
     main = sprintf("%s, ITT Analysis", title_names[match(outcome, outcomes)]),
     xlim = xl[[outcome]],
-    xlab = title_names[match(outcome, outcomes)],
+    # xlab = title_names[match(outcome, outcomes)],
+    xlab = "Estimated Treatment Effect",
+    sub  = "(Control - Treatment)",
     ylim = c(0, 1.25 * max(h$density))
     )
   lines(rep(h$mean, 2), c(0, 1.05 * max(h$density)), lty = 2, lwd = 2)
