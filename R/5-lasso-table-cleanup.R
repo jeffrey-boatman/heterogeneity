@@ -55,6 +55,9 @@ var_ord <- c(
 
 both <- both %>%
   mutate(var_ord = match(var, var_ord))
+both <- both %>%
+  arrange(var_ord, ord)
+both[c('var_ord', 'ord')] <- NULL
 
 
 write.table(both, 
