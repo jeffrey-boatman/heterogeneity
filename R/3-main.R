@@ -15,7 +15,7 @@ estimation <- "lasso"
 begin <- Sys.time()
 for (cohort in c("compliant", "ITT")) {
   # set.seed(123)
-  set.seed(321)
+  # set.seed(321)
   load("../RData/analysis.RData")
   analysis <- analysis %>% rename(trt = teh_treatment)
   # analysis <- analysis %>% 
@@ -42,8 +42,13 @@ for (cohort in c("compliant", "ITT")) {
 
 
   if (cohort == "compliant") {
+    # analysis <- analysis %>%
+    #   filter(trt == 0 | trt == 1 & ltne_20 < log(6.41))
     analysis <- analysis %>%
-      filter(trt == 0 | trt == 1 & ltne_20 < log(6.41))
+      mutate(compliant = 1 * (trt == 0 | trt == 1 & ltne_20 < log(6.41)))
+  } else {
+    analysis <- analysis %>%
+      mutate(compliant = 1)
   }
 
 
@@ -85,30 +90,41 @@ for (cohort in c("compliant", "ITT")) {
 
   Ytrain_missing <- as_tibble(is.na(Ytrain))
 
-  trt   <- as.logical(train$trt) # treatment indicator, only for P2!
-  trt   <- trt[complete_case]
-
+  trt <- as.logical(train$trt) # treatment indicator, only for P2!
+  trt <- trt[complete_case]
+  com <- Xtrain[, 'compliant', drop = TRUE]
+ 
 
   # Xtrain <- model.matrix(~ 0 + ., Xtrain)
-  Xtrain <- model.matrix(~ ., Xtrain)
+  # fm is ~ . -compliant since we don't want to include
+  # compliance as a predictor
+  Xtrain <- model.matrix(~ . -compliant, Xtrain)
   Xtrain <- Xtrain[, -1]
 
   # cbind(colnames(Xtrain))
 
   # debug(estimate_trt_diff)
 
+  # random number seeds to ensure control groups are the same
+  # rnseeds <- array(dim = c(2, 2, length(outcomes)),
+  #   dimnames  = list(
+  #     cohort  = c("ITT", "compliant"),
+  #     group   = c("con", "trt"),
+  #     outcome = outcomes))
+  # rnseeds()
   # ~ treatment effects ----
   trt_diffs_list <- list()
   for (outcome in outcomes) {
     is_binomial <- ifelse(outcome == "bcesd_20", TRUE, FALSE)
     trt_diffs_list[[outcome]] <- estimate_trt_diff(X = Xtrain,
-      X0 = Xtrain[!trt, ], 
-      X1 = Xtrain[trt, ], 
-      Y0 = Ytrain[, outcome, drop = TRUE][!trt],
-      Y1 = Ytrain[, outcome, drop = TRUE][trt],
+      X0 = Xtrain[!trt & com, ], 
+      X1 = Xtrain[trt  & com, ], 
+      Y0 = Ytrain[!trt & com, outcome, drop = TRUE],
+      Y1 = Ytrain[trt  & com, outcome, drop = TRUE],
       estimation = estimation,
       is_binomial = is_binomial)
   }
+  # set.seed(321)
 
   # create matrix with estimated treatment effects
   trt_diffs <- sapply(trt_diffs_list, '[[', "trt_diff")
@@ -131,7 +147,7 @@ for (cohort in c("compliant", "ITT")) {
   save(list = "histolist", file = sprintf("../RData/histolist-%s.RData", cohort))
 
   # ~ permutation tests ----
-  n_perm <- 1000
+  n_perm <- 10000
   n <- nrow(Xtrain)
   stddevs <- array(dim = c(n_perm, length(outcomes)),
     dimnames = list(permutation = seq_len(n_perm), outcome = outcomes))
@@ -151,11 +167,12 @@ for (cohort in c("compliant", "ITT")) {
       index <- seq_len(n)
       index <- sample(index)
       trt_perm <- trt[index]
+      com_perm <- com[index]
       trt_diff_perm <- estimate_trt_diff(X = Xtrain,
-        X0 = Xtrain[!trt_perm, ], 
-        X1 = Xtrain[trt_perm, ], 
-        Y0 = y_perm[!trt_perm],
-        Y1 = y_perm[trt_perm],
+        X0 = Xtrain[!trt_perm & com_perm, ], 
+        X1 = Xtrain[trt_perm  & com_perm, ], 
+        Y0 = y_perm[!trt_perm & com_perm],
+        Y1 = y_perm[trt_perm  & com_perm],
         estimation = estimation,
         is_binomial = ifelse(outcome == "bcesd_20", TRUE, FALSE))
       tdp <- trt_diff_perm$trt_diff
@@ -434,7 +451,7 @@ for (cohort in c("compliant", "ITT")) {
       rownames(coefs))
 
     # keep rows with at least 1 non-zero coefficient:
-    coefs <- coefs[rowSums(coefs) > 0, ]
+    coefs <- coefs[abs(rowSums(coefs)) > 0, ]
 
     # format for printing
     colnames(coefs) <- c("Control", "Treatment")

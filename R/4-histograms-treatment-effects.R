@@ -10,8 +10,14 @@ rm(histolist)
 
 
 outcomes <- names(hlist_com)
-title_names <- c("Total CPD", "CESD", "CESD (Binary)", "CO", "log TNE" ,
+title_names <- c("Total CPD", "CESD"
+  #, "CESD (Binary)"
+  , "CO", "log TNE" ,
   "log NNAL", "log PheT", "log CEMA", "log PGEM", "log ISO", "Weight Gain")
+
+if(length(outcomes) != length(title_names))
+  stop("mismatch between 'outcomes' and 'title_names'")
+
 
 # get xlims across compliant and ITT analyses
 xl <- list()
@@ -37,7 +43,7 @@ for (outcome in outcomes) {
     xlim = xl[[outcome]],
     #xlab = title_names[match(outcome, outcomes)]
     xlab = "Estimated Treatment Effect",
-    sub  = "(Control - Treatment)"
+    # sub  = "(Control - Treatment)"
     )
   lines(rep(h$mean, 2), c(0, 1.05 * max(h$density)), lty = 2, lwd = 2)
   dev.off()
@@ -55,7 +61,7 @@ for (outcome in outcomes) {
     xlim = xl[[outcome]],
     # xlab = title_names[match(outcome, outcomes)],
     xlab = "Estimated Treatment Effect",
-    sub  = "(Control - Treatment)",
+    # sub  = "(Control - Treatment)",
     ylim = c(0, 1.25 * max(h$density))
     )
   lines(rep(h$mean, 2), c(0, 1.05 * max(h$density)), lty = 2, lwd = 2)
