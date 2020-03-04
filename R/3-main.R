@@ -62,8 +62,8 @@ for (cohort in c("compliant", "ITT")) {
   # outcomes that will be used throughout analysis.
   # cesd will be treated as both numeric and binary.
   # bcesd_20 >= 16 means depressed
-  train <- train %>%
-    mutate(bcesd_20 = 1 * (cesd_20 >= 16))
+  # train <- train %>%
+  #   mutate(bcesd_20 = 1 * (cesd_20 >= 16))
   outcomes <- c("total_cpd_20", "cesd_20"
     #, "bcesd_20"
     , "co_20", "ltne_20", 
