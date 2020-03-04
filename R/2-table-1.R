@@ -112,3 +112,41 @@ with(analysis, {
   cat(sprintf(" - Number Compliant: %i\n", ncom))
   cat(sprintf(" - Percent Compliant: %.1f%%", pcom * 100))
 })
+
+# tests for baseline differences between control and compliers
+# and non-compliers
+
+nhtab <- CreateTableOne(
+  data   = subset(t1, cohort %in% c(2, 3)), 
+  strata = "cohort", 
+  test   = TRUE)
+
+nhtab2 <- print(nhtab, 
+  nonnormal  = "tne_bsl", 
+  explain    = FALSE, 
+  contDigits = 1, 
+  noSpaces   = TRUE, 
+  varLabels  = TRUE)
+# print(xtable(tab2))
+
+write.table(as.data.frame(nhtab2),
+  quote = FALSE,
+  sep = " & ")
+
+# Table for control vs immediate reduction
+tab <- CreateTableOne(
+  data = mutate(t1, cohort = ifelse(cohort == 1, 1, 2)), 
+  strata = "cohort", 
+  test   = FALSE)
+
+tab2 <- print(tab, 
+  nonnormal  = "tne_bsl", 
+  explain    = FALSE, 
+  contDigits = 1, 
+  noSpaces   = TRUE, 
+  varLabels  = TRUE)
+# print(xtable(tab2))
+
+write.table(as.data.frame(tab2),
+  quote = FALSE,
+  sep = " & ")

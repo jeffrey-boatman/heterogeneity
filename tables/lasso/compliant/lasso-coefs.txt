@@ -1,4 +1,5 @@
 Control & Treatment
+total_cpd_20 & (Intercept) & 6.05 & -6.40
 total_cpd_20 & age & - & 0.14
 total_cpd_20 & cpd_bsl & 0.83 & 0.63
 total_cpd_20 & ftnd_w_cpd & 0.10 & 0.19
@@ -16,12 +17,14 @@ co_20 & lpgem_visit0 & - & 0.39
 ltne_20 & (Intercept) & 3.53 & -0.10
 ltne_20 & cpd_bsl & - & 0.01
 ltne_20 & ltne_bsl & 0.06 & -
+lnnal_visit20 & (Intercept) & -0.14 & -2.59
 lnnal_visit20 & age & - & 0.01
 lnnal_visit20 & cpd_bsl & - & 0.01
 lnnal_visit20 & co_bsl & - & -
 lnnal_visit20 & lnnal_visit0 & 0.43 & 0.08
 lphet_visit20 & (Intercept) & 0.42 & -0.01
 lphet_visit20 & lphet_visit0 & 0.43 & 0.37
+lcema_visit20 & (Intercept) & -0.01 & -2.07
 lcema_visit20 & age & - & 0.01
 lcema_visit20 & cpd_bsl & - & 0.01
 lcema_visit20 & lnnal_visit0 & 0.06 & -

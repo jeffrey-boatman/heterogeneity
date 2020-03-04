@@ -17,11 +17,14 @@ co_20 & lnnal_visit0 & - & 0.02
 co_20 & lcema_visit0 & - & 0.34
 co_20 & lpgem_visit0 & - & 1.40
 ltne_20 & (Intercept) & 2.50 & 1.10
+ltne_20 & genderfemale & - & -0.17
+ltne_20 & eduSomeCollegeOrMore & - & -0.07
 ltne_20 & cpd_bsl & - & -
 ltne_20 & ltne_bsl & 0.31 & 0.10
 ltne_20 & ftnd_w_cpd & - & 0.04
 ltne_20 & ftnd_wo_cpd & - & 0.07
 ltne_20 & lcema_visit0 & 0.05 & -
+lnnal_visit20 & (Intercept) & -0.29 & -1.20
 lnnal_visit20 & age & - & -
 lnnal_visit20 & co_bsl & - & -
 lnnal_visit20 & ftnd_w_cpd & - & 0.05
@@ -29,6 +32,7 @@ lnnal_visit20 & lnnal_visit0 & 0.44 & 0.21
 lnnal_visit20 & lcema_visit0 & 0.02 & -
 lphet_visit20 & (Intercept) & 0.40 & 0.18
 lphet_visit20 & lphet_visit0 & 0.46 & 0.41
+lcema_visit20 & (Intercept) & -0.05 & -1.18
 lcema_visit20 & age & - & -
 lcema_visit20 & cpd_bsl & - & -
 lcema_visit20 & ftnd_w_cpd & - & 0.05

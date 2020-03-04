@@ -16,11 +16,15 @@ estimate_trt_diff <- function(X, X0, X1, Y0, Y1,
   if (estimation == "lasso") {
     require(glmnet)
 
+    # set random number seed for control group
+    set.seed(1)
     m0 <- cv.glmnet(x = X0,
       y           = Y0,
       family      = family,
       alpha       = 1,
       standardize = TRUE)
+    # set random number seed for treatment group
+    set.seed(2)
     m1 <- cv.glmnet(x = X1,
       y           = Y1,
       family      = family,
