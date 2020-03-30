@@ -1,7 +1,7 @@
 Train & Test
-con & (Intercept) & 3.59 & 8.03
-con & cpd_bsl & 0.87 & 0.77
-con & ftnd_w_cpd & 0.32 & 0.44
-trt & (Intercept) & -1.11 & 4.65
-trt & age & 0.05 & -
-trt & cpd_bsl & 0.85 & 0.73
+con & (Intercept) & 4.07 & 9.56
+con & cpd_bsl & 0.86 & 0.72
+con & ftnd_w_cpd & 0.27 & 0.28
+trt & (Intercept) & -1.80 & 4.23
+trt & age & 0.06 & -
+trt & cpd_bsl & 0.86 & 0.76
